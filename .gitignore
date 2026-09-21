@@ -1,0 +1,99 @@
+# Build artifacts
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+build/
+bld/
+
+# Visual Studio
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.sln.docstates
+*.vsp
+*.vspx
+*.sap
+*.sapcache
+*.sln.ide
+*.nupkg
+*.snupkg
+.nuget/
+*.nupkg.info
+*.nuget.props
+*.nuget.targets
+
+# Rider / ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+.idea/
+
+# VS Code
+.vscode/
+
+# Test results
+[Tt]est[Rr]esult*/
+TestResults/
+*.coverage
+*.coveragexml
+*.coveragexml.deserialised
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# .NET tools
+.dotnet/
+*.local
+
+# Logs
+*.log
+log/
+logs/
+[Ll]og/
+[Ll]ogs/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+ehthumbs_vista.db
+
+# Editor swap files
+*.swp
+*.swo
+*~
+
+# Local config overrides (NEVER commit secrets)
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.Local.json
+*.env
+.env
+.env.*
+
+# Project runtime state (sites, logs, registry)
+data/sites/
+data/logs/
+data/exports/
+data/registry.json
+!data/.gitkeep
+
+# Publish output
+publish/
+PublishProfiles/
+*.pubxml
+*.pubxml.user
+
+# Certificates
+*.pfx
+*.p12
+*.key
