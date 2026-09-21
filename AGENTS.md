@@ -8,33 +8,26 @@ Letztes Update: 2026-09-21
 
 ## Current Status
 
-Projektordner angelegt, Specs v0.1 geschrieben.
-Nächster Schritt: GitHub-Repo einrichten + Solution initial commiten.
+Projektordner angelegt, Specs v0.1 geschrieben, GitHub-Repo erstellt, Initial-Commit gepusht.
 
 - [x] Specs v0.1 geschrieben (01–04)
-- [ ] GitHub-Repo angelegt (Name + Visibility bestätigen)
-- [ ] `.gitignore` + Solution-Skelett committed
-- [ ] Phase 1 (MVP) laut `specs/04-roadmap.md` starten
+- [x] GitHub-Repo angelegt: `schirkan/web-hoster-mcp` (privat)
+- [x] `.gitignore` + Initial-Commit `fc06a2b` (8 Files, 814 Inserts)
+- [ ] Workboard für Phase 1 (MVP) anlegen — Epic mit 12 Sub-Schritten
+- [ ] Phase 1 starten laut `specs/04-roadmap.md`
 
 ---
 
 ## Git
 
-Kein Git-Repo eingerichtet.
-
-Geplant: **Neues GitHub-Repo** (Martin hat das so entschieden, 2026-09-21).
-Name-Default: `web-hoster-mcp` (= Projektordner-Name).
-
-Vor erstem Check-in: `.gitignore` für .NET erstellen (deckt `bin/`, `obj/`,
-`*.user`, `*.suo`, `.vs/`, `data/`, `appsettings.Development.json` ab).
-
-Nach Einrichtung hier eintragen:
-- Repo-Typ: GitHub (neu)
-- Pfad / URL: `https://github.com/<owner>/web-hoster-mcp`
-- Remote(s): `origin`
-- Eingerichtet am: <datum>
-- `.gitignore`-Status: vorhanden
-- Sichtbarkeit: <private|public>
+- **Repo-Typ:** GitHub (neu angelegt)
+- **Pfad / URL:** https://github.com/schirkan/web-hoster-mcp
+- **Remote(s):** `origin` → https://github.com/schirkan/web-hoster-mcp.git
+- **Eingerichtet am:** 2026-09-21
+- **`.gitignore`-Status:** vorhanden (.NET-Standard + `data/sites/`, `data/logs/`, `data/exports/`, `data/registry.json`)
+- **Sichtbarkeit:** privat
+- **Standard-Branch:** `main`
+- **Initial-Commit:** `fc06a2b`
 
 ---
 
