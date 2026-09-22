@@ -8,13 +8,19 @@ Letztes Update: 2026-09-21
 
 ## Current Status
 
-Stand: 2026-09-22 (20:04)
+Stand: 2026-09-22 (21:35)
 
-- [x] Specs v0.1 (über-engineered, gelöscht — siehe Commit-Message)
-- [x] MVP1-Spec gelockt: `specs/mvp1.md` (4 Tools · Kestrel 0.0.0.0:3000 · Data-URL + plain · 1 MB Limit)
+- [x] MVP1-Spec gelockt + refaktoriert: `specs/mvp1.md`
+  - Storage flach (kein `data/`, kein `wwwroot/`)
+  - `SitesRoot` in `appsettings.json` statt `DataRoot`
+  - `render_type`-Feld (default `files`)
 - [x] MVP2 Directory-Listing gelockt: `specs/mvp2-directory-listing.md`
 - [x] MVP3 `src`-Parameter abgelegt (Idee + Pro/Contra): `specs/mvp3-external-src.md`
-- [x] Spec-Index neu: `specs/README.md`
+- [x] MVP4 Alternative Render Types gelockt: `specs/mvp4-render-types.md`
+  - 3 Render-Typen: `files`, `a2ui`, `json-schema-form`
+  - React-basierte Render-Pipeline (CDN: React 18 + RJSF + A2UI-React)
+  - Submit-Endpoint + `get_submissions` Tool
+- [x] Spec-Index aktualisiert: `specs/README.md`
 - [ ] MVP2: HTTPS + Retention klären
 - [ ] Workboard für Implementierung anlegen (sobald MVP1 + MVP2 final)
 

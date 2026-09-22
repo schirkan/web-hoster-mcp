@@ -1,13 +1,14 @@
 # MVP1 — Web Hoster MCP
 
-Stand: 2026-09-22 · v1.0 (lock)
+Stand: 2026-09-22 · v1.0 (lock, refaktoriert für MVP4-Integration)
 
 ## Ziel
 
 MCP-Server (C# / .NET 8, Windows), der einer KI **vier Tools**
 bereitstellt, um statische Web-Inhalte im **lokalen Netz** zu hosten.
 Eine Site = ein Ordner voller Files, erreichbar unter
-`http://<ip>:<port>/<site_path>/<file>`.
+`http://<ip>:<port>/<site_path>/<file>`. Render-Type MVP1 ist
+`files` (default); weitere Render-Typen kommen in MVP4.
 
 ## Server
 
@@ -20,15 +21,13 @@ Eine Site = ein Ordner voller Files, erreichbar unter
 ## Storage-Layout
 
 ```
-data/
-├── registry.json
-├── sites/
-│   ├── <site_path>/
-│   │   └── wwwroot/
-│   │       └── <files>
-│   └── <site_path2>/…
-└── logs/
+<SitesRoot>/                       # Default ./sites (konfigurierbar)
+├── registry.json                  # Site-Registry (Single Source of Truth)
+└── <site_path>/                   # Site-Folder, FLACH
+    └── <files>                    # Bei render_type: "files" — direkt im Site-Folder
 ```
+
+**Kein `data/`-Parent, kein `wwwroot/`.** Flach.
 
 `registry.json` (Schema v1):
 
@@ -38,12 +37,15 @@ data/
   "sites": {
     "demo-001": {
       "site_path": "demo-001",
+      "render_type": "files",
       "created_at": "2026-09-22T19:25:00Z",
       "updated_at": "2026-09-22T19:30:00Z"
     }
   }
 }
 ```
+
+`render_type` default `"files"`. Siehe `specs/mvp4-render-types.md` für weitere Typen.
 
 ## Configuration (`appsettings.json`)
 
@@ -53,7 +55,7 @@ data/
     "Ip": "0.0.0.0",
     "Port": 3000
   },
-  "DataRoot": "./data",
+  "SitesRoot": "./sites",
   "MaxFileSizeBytes": 1048576
 }
 ```
@@ -67,6 +69,7 @@ data/
 ```json
 {
   "site_path": "demo-001",
+  "render_type": "files",
   "mode": "merge",
   "files": [
     {"path": "index.html", "content": "<!DOCTYPE html>..."},
@@ -79,9 +82,12 @@ data/
 **Input-Validation:**
 
 - `site_path` (optional): falls gesetzt → `^[a-z0-9-]{3,32}$`; falls leer → 8-stellige random UID
+- `render_type` (optional, default `"files"`): `"files"` (MVP4-Erweiterung: `"a2ui"`, `"json-schema-form"`)
+  - Wert ungültig → `invalid_render_type`
+  - Bei bestehender Site + `render_type` weicht ab → `render_type_immutable`
 - `mode` (optional, default `"merge"`): `"merge"` | `"replace"`
 - `files[]`:
-  - jeder Eintrag: `path` Pflicht, relativ zu `wwwroot/`, kein `..`
+  - jeder Eintrag: `path` Pflicht, relativ zu `<site>/`, kein `..`
   - entweder `content` oder `delete: true`, niemals beides
   - **doppelter `path` in einem Call → Fehler `duplicate_path`**
   - `content` mit `data:`-Präfix → Data-URL parsen + base64 dekodieren
@@ -129,6 +135,7 @@ Gelöschte Files erscheinen **nicht** in `files[]`.
 [
   {
     "site_path": "demo-001",
+    "render_type": "files",
     "file_count": 3,
     "created_at": "2026-09-22T19:25:00Z",
     "updated_at": "2026-09-22T19:30:00Z",
@@ -137,7 +144,7 @@ Gelöschte Files erscheinen **nicht** in `files[]`.
 ]
 ```
 
-`file_count` wird per `Directory.EnumerateFiles(wwwroot).Count()` ermittelt.
+`file_count` wird per `Directory.EnumerateFiles(<site>).Count()` ermittelt.
 
 ### 3. `get_site_info`
 
@@ -148,6 +155,7 @@ Gelöschte Files erscheinen **nicht** in `files[]`.
 ```json
 {
   "site_path": "demo-001",
+  "render_type": "files",
   "file_count": 3,
   "created_at": "2026-09-22T19:25:00Z",
   "updated_at": "2026-09-22T19:30:00Z",
@@ -165,11 +173,11 @@ Gelöschte Files erscheinen **nicht** in `files[]`.
 
 **Output:** `{ "site_path": "demo-001", "deleted": true }`
 
-Löscht `data/sites/<site_path>/` und den Registry-Eintrag.
+Löscht `<SitesRoot>/<site_path>/` und den Registry-Eintrag.
 
 ## Static File Serving (MVP1)
 
-- `GET /<site_path>/<file>` → Datei serven mit Content-Type aus File-Extension
+- `GET /<site_path>/<file>` → Datei serven mit Content-Type aus File-Extension (Pfad intern: `<SitesRoot>/<site_path>/<file>`)
 - `GET /<site_path>/` → **404** (Directory Listing kommt in MVP2)
 - `GET /<site_path>` (ohne `/`) → **404**
 - `GET /` → **404** (Sites-Index kommt in MVP2)
@@ -207,6 +215,8 @@ Löscht `data/sites/<site_path>/` und den Registry-Eintrag.
 | `invalid_data_url` | Data-URL kaputt / base64 ungültig |
 | `empty_files_not_allowed` | `replace`-Modus mit `files: []` |
 | `path_traversal` | `path` enthält `..` oder ist absolut |
+| `invalid_render_type` | `render_type` nicht in erlaubter Liste |
+| `render_type_immutable` | Site existiert + `render_type` weicht ab |
 | `internal_error` | Unerwarteter Server-Fehler |
 
 ## Out of Scope (MVP1)
@@ -214,8 +224,6 @@ Löscht `data/sites/<site_path>/` und den Registry-Eintrag.
 - HTTPS (→ MVP2)
 - Auto-Delete / Retention (→ MVP2)
 - Directory Listing & Sites-Index (→ MVP2)
+- A2UI / JSON-Schema-Form Render-Types (→ MVP4)
 - `src`-Parameter für lokale Files (→ MVP3)
-- Custom HTTP-Headers, SPA-Fallback
-- Auth, Whitelisting, Rate-Limiting
-- Subdirectories (Files in Sites sind flat)
-- `start_site` / `stop_site` (Server läuft durch, Site ist da oder weg)
+- Form-Submit-Endpoint + `get_submissions` (→ MVP4)

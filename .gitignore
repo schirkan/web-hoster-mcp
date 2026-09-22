@@ -80,12 +80,9 @@ appsettings.*.Local.json
 .env
 .env.*
 
-# Project runtime state (sites, logs, registry)
-data/sites/
-data/logs/
-data/exports/
-data/registry.json
-!data/.gitkeep
+# Project runtime state — default SitesRoot=./sites (konfigurierbar via appsettings.json)
+sites/
+!sites/.gitkeep
 
 # Publish output
 publish/
