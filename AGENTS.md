@@ -8,13 +8,15 @@ Letztes Update: 2026-09-21
 
 ## Current Status
 
-Projektordner angelegt, Specs v0.1 geschrieben, GitHub-Repo erstellt, Initial-Commit gepusht.
+Stand: 2026-09-22 (20:04)
 
-- [x] Specs v0.1 geschrieben (01–04)
-- [x] GitHub-Repo angelegt: `schirkan/web-hoster-mcp` (privat)
-- [x] `.gitignore` + Initial-Commit `fc06a2b` (8 Files, 814 Inserts)
-- [ ] Workboard für Phase 1 (MVP) anlegen — Epic mit 12 Sub-Schritten
-- [ ] Phase 1 starten laut `specs/04-roadmap.md`
+- [x] Specs v0.1 (über-engineered, gelöscht — siehe Commit-Message)
+- [x] MVP1-Spec gelockt: `specs/mvp1.md` (4 Tools · Kestrel 0.0.0.0:3000 · Data-URL + plain · 1 MB Limit)
+- [x] MVP2 Directory-Listing gelockt: `specs/mvp2-directory-listing.md`
+- [x] MVP3 `src`-Parameter abgelegt (Idee + Pro/Contra): `specs/mvp3-external-src.md`
+- [x] Spec-Index neu: `specs/README.md`
+- [ ] MVP2: HTTPS + Retention klären
+- [ ] Workboard für Implementierung anlegen (sobald MVP1 + MVP2 final)
 
 ---
 
