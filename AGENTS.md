@@ -8,16 +8,17 @@ Letztes Update: 2026-09-22
 
 ## Current Status
 
-Stand: 2026-09-22 (22:55)
+Stand: 2026-09-23 (08:30)
 
 - [x] MVP1-Spec v1.1: `specs/mvp1.md` — `type: "files"`-Pfad, 4 Tools, Subfolders, Trust-Path-Modell
+- [x] MVP2-Spec v1.0: `specs/mvp2.md` — HTTPS (Beides, separate Port, Self-Signed Fallback) + Retention (7d Default, 1h Interval, Background-Timer, Hard Delete) + HTTP-Delete-Endpoints (Confirm-Pattern)
 - [x] MVP2-Listing v1.1: `specs/mvp2-directory-listing.md`
 - [x] MVP3 `src` (Idee + Pro/Contra): `specs/mvp3-external-src.md`
 - [x] MVP4 Render-Types v2.0: `specs/mvp4-render-types.md` — 4 Types, React+RJSF+A2UI
 - [x] GitHub-Repo `schirkan/web-hoster-mcp` ist **public**
 - [x] Workboard `web-hoster-mcp` angelegt (26 Karten, alle in `backlog`)
-- [ ] MVP2-Spec: HTTPS + Retention + Delete-Endpoints schreiben
-- [ ] Implementierung (Karten aus Workboard abarbeiten)
+- [ ] Karten auf Workboard nach `specify` ziehen (Acceptance Criteria schärfen)
+- [ ] Implementierung starten (high-Karten aus MVP1 zuerst)
 
 ---
 
@@ -101,6 +102,7 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 | Spec | Status |
 |------|--------|
 | `mvp1.md` | ✅ v1.1 locked |
+| `mvp2.md` | ✅ v1.0 locked |
 | `mvp2-directory-listing.md` | ✅ v1.1 locked |
 | `mvp3-external-src.md` | 📝 Idee + Pro/Contra |
 | `mvp4-render-types.md` | ✅ v2.0 locked |
