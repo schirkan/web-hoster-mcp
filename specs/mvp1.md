@@ -14,8 +14,8 @@ Stand: 2026-09-23 · v1.3 (lock)
 MCP-Server (C# / .NET 8, Windows), der einer KI **vier Tools**
 bereitstellt, um statische Web-Inhalte im **lokalen Netz** zu hosten.
 
-Diese Spec deckt **`type: "files"`** (Default-Render-Type) ab.
-Weitere Render-Types (`folder`, `a2ui`, `json-schema-form`) sind in
+Diese Spec deckt **`type: "files"`** (Default-Hosting-Typ) ab.
+Weitere Hosting-Typen (`folder`, `a2ui`, `json-schema-form`) sind in
 `specs/mvp4-render-types.md` definiert. Für alternative File-Quellen
 über `src` (Data URL, lokaler Pfad, HTTP/HTTPS-URL) siehe
 `specs/mvp3.md`.
@@ -260,7 +260,7 @@ Hinweis: `empty_files_not_allowed` ist seit v1.3 entfernt — `files: []` ist in
 - HTTPS (→ MVP2)
 - Auto-Delete / Retention (→ MVP2)
 - Directory Listing & Sites-Index (→ MVP2)
-- Render-Types `folder`/`a2ui`/`json-schema-form` (→ MVP4)
+- Hosting-Typen `folder`/`a2ui`/`json-schema-form` (→ MVP4)
 - `src`-Parameter pro File (Data URL / lokaler Pfad / HTTP-URL) (→ MVP3)
 - Data-URL-Sonderbehandlung in `content` — Data URLs gehören in `src` (MVP3)
 - Submit-Endpoint + `get_submissions` (→ MVP4)

@@ -1,4 +1,4 @@
-# MVP4 — Render Types
+# MVP4 — Hosting Typen
 
 Stand: 2026-09-23 · v2.2 (lock)
 
@@ -11,14 +11,19 @@ Stand: 2026-09-23 · v2.2 (lock)
 
 ## Ziel
 
-Sites können einen Render-Type haben: `files` (default), `folder`, `a2ui`
-oder `json-schema-form`. Pro Site genau ein Render-Type (kein Mixing).
-Server liefert je nach Type die passende HTTP-Antwort.
+Sites können einen Hosting-Typ haben: `files` (default), `folder`, `a2ui`
+oder `json-schema-form`. Pro Site genau ein Hosting-Typ (kein Mixing).
+Server liefert je nach `type` die passende HTTP-Antwort.
+
+Hinweis: `files` und `folder` rendern grundsätzlich sehr ähnlich (beide liefern
+statische Dateien aus), unterscheiden sich aber in der Quelle:
+- `files`: Dateien liegen unter `<SitesRoot>/<site>/...`
+- `folder`: Dateien kommen live aus einem Host-Folder (`path`)
 
 Für MVP3-File-Quellen (`src`: Data URL, lokaler Pfad, HTTP-URL) siehe
 `specs/mvp3.md`.
 
-## Render Types
+## Hosting Typen
 
 | Type | Storage im Server | HTTP | Listing | File-Delete |
 |------|-------------------|------|---------|-------------|

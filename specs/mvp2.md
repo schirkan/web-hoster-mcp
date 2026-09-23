@@ -17,7 +17,7 @@ MVP2 erweitert MVP1 um drei Features:
 - **Retention / Auto-Delete** per Site (TTL seit `updated_at`, Background-Timer, Hard Delete; Default 7 Tage, Interval 1h)
 - **HTTP-Delete-Endpoints** mit **DELETE-Methode** (kein Confirm-Pattern, kein Prefetch-Risiko) + JS-Buttons in Listings für Browser-User
 
-Referenzen: `specs/mvp1.md` (Basis), `specs/mvp4-render-types.md` (Render-Types für Type-bezogenes Verhalten).
+Referenzen: `specs/mvp1.md` (Basis), `specs/mvp4-render-types.md` (Hosting-Typen für `type`-bezogenes Verhalten).
 
 ## 1. Server (Update zu MVP1)
 
@@ -120,9 +120,9 @@ Pro Tick:
 
 Loggt pro Expiry: `Site expired: <site_path> (ttl=<n>s, age=<age>s)`.
 
-### 3.4 Hard-Delete-Verhalten pro Render-Type
+### 3.4 Hard-Delete-Verhalten pro Hosting-Typ
 
-| Render-Type | Bei Expiry |
+| Hosting-Typ | Bei Expiry |
 |-------------|------------|
 | `files`       | `rm -rf <SitesRoot>/<site>/` + Registry weg |
 | `a2ui`       | `rm -rf <SitesRoot>/<site>/` (enthält `payload.json`) + Registry weg |
@@ -148,9 +148,9 @@ DELETE /<site>/<file>      → File löschen, 302 → /<site>/
 - RESTful + konsistent mit anderen HTTP-Tools (curl, postman)
 - Kein `?confirm=yes`-Param-Clutter in URLs
 
-### 4.2 Render-Type-spezifisches Verhalten
+### 4.2 Hosting-Typ-spezifisches Verhalten
 
-| Render-Type | `DELETE /<site>` | `DELETE /<site>/<file>` |
+| Hosting-Typ | `DELETE /<site>` | `DELETE /<site>/<file>` |
 |-------------|------------------|------------------------|
 | `files`       | Hard-Delete (Site-Folder + Registry) | File löschen |
 | `folder`      | **Nur Registry** weg (Host-Folder bleibt!) | **404** (kein File-Delete bei folder, per MVP4) |
@@ -402,7 +402,7 @@ Browser-UI nutzt JS-Buttons mit `fetch(..., {method: 'DELETE'})` (siehe §4.3).
 | `https_startup_failed` | HTTPS-Listener konnte nicht starten |
 | `internal_error` | Unerwarteter Server-Fehler |
 
-Hinweis: `path_traversal` wird **nicht** mehr ausgelöst (Trust-Modell, etabliert in MVP4). DELETE für nicht erlaubte Render-Types (z. B. `/<site>/<file>` bei folder/a2ui/schema-form) → **404** vom Kestrel-Router (kein Endpoint registriert), nicht ein typisierter Error.
+Hinweis: `path_traversal` wird **nicht** mehr ausgelöst (Trust-Modell, etabliert in MVP4). DELETE für nicht erlaubte Hosting-Typen (z. B. `/<site>/<file>` bei folder/a2ui/schema-form) → **404** vom Kestrel-Router (kein Endpoint registriert), nicht ein typisierter Error.
 
 ## 11. Out of Scope (MVP2)
 

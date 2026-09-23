@@ -9,9 +9,9 @@ bereitstellt, um statische Web-Inhalte im **lokalen Netz** zu hosten.
 - **`delete_site`** — Site löschen
 - **`get_submissions`** — Schema-Form Submissions abholen
 
-Erweiterungen (via `src`-Parameter, Render-Typen, HTTPS, Retention):
+Erweiterungen (via `src`-Parameter, Hosting-Typen, HTTPS, Retention):
 
-- **4 Render-Typen:** `files` (default) / `folder` / `a2ui` / `json-schema-form`
+- **4 Hosting-Typen (`type`):** `files` (default) / `folder` / `a2ui` / `json-schema-form`
 - **HTTPS** parallel zu HTTP (PFX-Cert oder Self-Signed Fallback mit SAN-Entries)
 - **Retention / Auto-Delete** per Site (TTL seit `updated_at`, Background-Timer, 7 Tage Default, 1h Interval)
 - **Per-File `src`-Parameter** (Data URL / lokaler Pfad inkl. UNC / HTTP-URL → physische Kopie via atomic-write)
@@ -29,7 +29,7 @@ Erweiterungen (via `src`-Parameter, Render-Typen, HTTPS, Retention):
 | [`mvp2.md`](./specs/mvp2.md) | HTTPS (Cert Beides, SAN, Self-Signed Fallback) + Retention/Auto-Delete (7d default, 1h interval) + HTTP-Delete-Endpoints mit DELETE-Methode | ✅ v1.3 locked |
 | [`mvp2-directory-listing.md`](./specs/mvp2-directory-listing.md) | Directory-Listing für `files`/`folder` (kein Listing bei `a2ui`/`schema-form`) | ✅ v1.3 locked |
 | [`mvp3.md`](./specs/mvp3.md) | Per-File `src` (Data URL / lokaler Pfad / HTTP-URL), atomic write, kein 1 MB Download-Limit | ✅ v1.1 locked |
-| [`mvp4-render-types.md`](./specs/mvp4-render-types.md) | 4 Render-Typen (`files`/`folder`/`a2ui`/`json-schema-form`) + React + RJSF + offizieller A2UI-React-Renderer (`@a2ui/react`) + Submit + `get_submissions` + 1 MB Limits für Payloads | ✅ v2.2 locked |
+| [`mvp4-render-types.md`](./specs/mvp4-render-types.md) | 4 Hosting-Typen (`type`: `files`/`folder`/`a2ui`/`json-schema-form`) + React + RJSF + offizieller A2UI-React-Renderer (`@a2ui/react`) + Submit + `get_submissions` + 1 MB Limits für Payloads | ✅ v2.2 locked |
 | [`mvp5-authorization.md`](./specs/mvp5-authorization.md) | **Authorization Draft** (Bearer-Token für HTTP-Endpoints, noch nicht festgelegt) | 📝 Draft |
 
 **Lock-Semantik:** v1.0 = final; Änderungen führen zu v1.1/v2.0-Bump mit Changelog-Eintrag oben im jeweiligen Spec.
@@ -81,7 +81,7 @@ dotnet run --project src/WebHosterMcp.Host
 # → MCP-Endpoint via stdio
 ```
 
-*(MVP1 ist implementiert; HTTPS/Retention/Render-Types folgen gemäß Specs.)*
+*(MVP1 ist implementiert; HTTPS/Retention/weitere Hosting-Typen folgen gemäß Specs.)*
 
 ---
 

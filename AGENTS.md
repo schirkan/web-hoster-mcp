@@ -20,7 +20,7 @@ Stand: 2026-09-23 (20:20)
 - [x] MVP2-Spec v1.3: `specs/mvp2.md` — HTTPS (Beides, SAN, Self-Signed Fallback) + Retention (7d Default, 1h Interval mit **Range-Validation**, Background-Timer, Hard Delete) + HTTP-Delete-Endpoints mit **DELETE-Methode** + **`Host:UseHttps=false` → HTTPS off** + **`folder`-Retention: Registry weg, Host-Folder bleibt, Re-Deploy setzt `path` + `updated_at`** + Lock-Semantik-Footer
 - [x] MVP2-Listing v1.3: `specs/mvp2-directory-listing.md` — Lock-Semantik-Footer + Hinweis auf Delete-Buttons in MVP2 §4/§5
 - [x] MVP3-Spec v1.1: `specs/mvp3.md` — per-File `src` (Data URL / lokaler Pfad / HTTP-URL), **Path-Validation analog MVP1**, **UNC erlaubt**, **`data:` case-insensitive**, **kein 1 MB Download-Limit**, atomic write
-- [x] MVP4 Render-Types v2.2: `specs/mvp4-render-types.md` — **Path-Validation für `folder`-Type**, **1 MB Limit für `payload.json` (a2ui/schema-form) und Submission-Body**, **NPM-Link für `@a2ui/react`**, **`file_count` analog für files/folder**, **`folder`-Retention-Explicit**, Lock-Semantik-Footer
+- [x] MVP4 Hosting-Typen v2.2: `specs/mvp4-render-types.md` — **Path-Validation für `folder`-Type**, **1 MB Limit für `payload.json` (a2ui/schema-form) und Submission-Body**, **NPM-Link für `@a2ui/react`**, **`file_count` analog für files/folder**, **`folder`-Retention-Explicit**, Lock-Semantik-Footer
 - [x] MVP5-Draft: `specs/mvp5-authorization.md` — Bearer-Token für HTTP-Endpoints (Draft, noch nicht gelockt)
 - [x] GitHub-Repo `schirkan/web-hoster-mcp` ist **public**
 - [x] LICENSE (MIT) hinzugefügt
@@ -100,12 +100,12 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 | f32fb8a0 | Integration src in deploy-Tool (MVP1 Validation erweitern) | normal |
 | 23efd0b1 | E2E-Test MVP3 (data-URL / local / HTTP) | normal |
 
-### MVP4 — Render Types (9 Karten)
+### MVP4 — Hosting Typen (9 Karten)
 
 | ID | Titel | Priorität |
 |----|-------|-----------|
 | 44a3bd38 | type-Field + Immutable-Registry | high |
-| 8cfaf757 | Render-Type-Dispatch im Kestrel-Routing | high |
+| 8cfaf757 | Type-Dispatch im Kestrel-Routing (Hosting-Typen) | high |
 | 91948250 | folder-Type (Host-Folder-Mirror) | normal |
 | f975b7a0 | files-Type Subfolder-Support (rekursives Listing) | normal |
 | 78196a80 | React-Template-Generator (HTML + CDN-Scripts) | high |
