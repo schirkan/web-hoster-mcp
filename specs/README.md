@@ -10,12 +10,6 @@ Aktuelle Specs, phasenweise. MVP1 + MVP2 + MVP2-Listing + MVP3 + MVP4 sind geloc
 | [`mvp3.md`](./mvp3.md) | MVP3 — Per-File `src`-Parameter (Data URL / lokaler Pfad / HTTP-URL) → physische Kopie in `<SitesRoot>/<site>/<path>`, Trust-Modell | ✅ v1.0 locked |
 | [`mvp4-render-types.md`](./mvp4-render-types.md) | MVP4 — 4 Render-Types (`files`/`folder`/`a2ui`/`json-schema-form`) + React + RJSF + A2UI-React | ✅ v2.1 locked |
 
-## Archiv
-
-| Datei | Status |
-|-------|--------|
-| [`_archive/mvp3-external-src-draft.md`](./_archive/mvp3-external-src-draft.md) | 📝 Alter Draft vor MVP3 v1.0 |
-
 ---
 
 ## Lock-Semantik
