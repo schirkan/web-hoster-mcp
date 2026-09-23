@@ -14,17 +14,20 @@ MIT — siehe [LICENSE](./LICENSE)
 
 ## Current Status
 
-Stand: 2026-09-23 (16:14)
+Stand: 2026-09-23 (18:00)
 
-- [x] MVP1-Spec v1.2: `specs/mvp1.md` — `type: "files"`-Pfad, 4 Tools, `content` plain-only, `src`/Data-URL/MVP3-verwiesen, Retention/expires_at dokumentiert, Lock-Semantik-Footer
-- [x] MVP2-Spec v1.2: `specs/mvp2.md` — HTTPS (Beides, separate Port, Self-Signed inkl. SAN) + Retention (7d Default, 1h Interval, Background-Timer, Hard Delete) + **HTTP-Delete-Endpoints mit DELETE-Methode (kein `/file/`, kein Confirm-Pattern)** + Delete-Buttons in Listings + Lock-Semantik-Footer
+- [x] MVP1-Spec v1.3: `specs/mvp1.md` — `type: "files"`-Pfad, 4 Tools, `content` plain-only, **Path-Validation (`..`/MAX_PATH)**, **timestamps lokal**, **replace+empty deletes all**, Cross-Ref auf MVP3 für `src`, Lock-Semantik-Footer
+- [x] MVP2-Spec v1.3: `specs/mvp2.md` — HTTPS (Beides, SAN, Self-Signed Fallback) + Retention (7d Default, 1h Interval mit **Range-Validation**, Background-Timer, Hard Delete) + HTTP-Delete-Endpoints mit **DELETE-Methode** + **`Host:UseHttps=false` → HTTPS off** + **`folder`-Retention: Registry weg, Host-Folder bleibt, Re-Deploy setzt `path` + `updated_at`** + Lock-Semantik-Footer
 - [x] MVP2-Listing v1.3: `specs/mvp2-directory-listing.md` — Lock-Semantik-Footer + Hinweis auf Delete-Buttons in MVP2 §4/§5
-- [x] MVP3-Spec v1.0: `specs/mvp3.md` — per-File `src` mit Data URL / lokaler Pfad / HTTP-URL, Trust-Modell, Lock-Semantik-Footer
-- [x] MVP4 Render-Types v2.1: `specs/mvp4-render-types.md` — A2UI via offiziellen React-Renderer (`renderers/react/`), Lock-Semantik-Footer
+- [x] MVP3-Spec v1.1: `specs/mvp3.md` — per-File `src` (Data URL / lokaler Pfad / HTTP-URL), **Path-Validation analog MVP1**, **UNC erlaubt**, **`data:` case-insensitive**, **kein 1 MB Download-Limit**, atomic write
+- [x] MVP4 Render-Types v2.2: `specs/mvp4-render-types.md` — **Path-Validation für `folder`-Type**, **1 MB Limit für `payload.json` (a2ui/schema-form) und Submission-Body**, **NPM-Link für `@a2ui/react`**, **`file_count` analog für files/folder**, **`folder`-Retention-Explicit**, Lock-Semantik-Footer
+- [x] MVP5-Draft: `specs/mvp5-authorization.md` — Bearer-Token für HTTP-Endpoints (Draft, noch nicht gelockt)
 - [x] GitHub-Repo `schirkan/web-hoster-mcp` ist **public**
 - [x] LICENSE (MIT) hinzugefügt
 - [x] `_archive/` Ordner entfernt
+- [x] README.md mit allen Spec-Versionen (MVP1 v1.3, MVP2 v1.3, MVP2-Listing v1.3, MVP3 v1.1, MVP4 v2.2)
 - [x] Workboard `web-hoster-mcp` angelegt (26 Karten, 1 done + 25 backlog)
+- [ ] Karten-Titles updaten (siehe §Workboard unten — 2 Cards stale nach DELETE-Switch)
 - [ ] Implementierung starten (Workboard-Karten claimen + arbeiten)
 
 ---
@@ -73,8 +76,8 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 | 6a49c9ad | MVP2-Spec: HTTPS + Retention + Delete-Endpoints schreiben | high — **done** (Commit dd55944) |
 | d1dbec46 | HTTPS-Endpoint + Cert-Loading (PFX + Self-Signed Fallback) | normal |
 | 4c858484 | Retention-Background-Service (TTL + Auto-Delete) | normal |
-| 775a5686 | HTTP-Delete-Endpoints mit Confirm-Pattern | normal |
-| a65169c7 | Delete-Links in Directory-Listings | normal |
+| 775a5686 | HTTP-Delete-Endpoints (DELETE-Methode) — kein Confirm-Pattern | normal |
+| a65169c7 | Delete-Buttons in Directory-Listings (JS + DELETE) | normal |
 | c2a52cad | E2E-Test MVP2 (HTTPS + TTL + Delete-Links) | high |
 
 ### MVP3 — Per-File src (4 Karten)
@@ -108,11 +111,12 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 
 | Spec | Status |
 |------|--------|
-| `mvp1.md` | ✅ v1.2 locked |
-| `mvp2.md` | ✅ v1.2 locked |
+| `mvp1.md` | ✅ v1.3 locked |
+| `mvp2.md` | ✅ v1.3 locked |
 | `mvp2-directory-listing.md` | ✅ v1.3 locked |
-| `mvp3.md` | ✅ v1.0 locked |
-| `mvp4-render-types.md` | ✅ v2.1 locked |
+| `mvp3.md` | ✅ v1.1 locked |
+| `mvp4-render-types.md` | ✅ v2.2 locked |
+| `mvp5-authorization.md` | 📝 Draft |
 
 ---
 

@@ -1,6 +1,11 @@
 # MVP3 — per-File `src`-Parameter
 
-Stand: 2026-09-23 · v1.0 (lock)
+Stand: 2026-09-23 · v1.1 (lock)
+
+## Changelog
+
+- **v1.1 (2026-09-23):** `data:`-Erkennung case-insensitive (OrdinalIgnoreCase). KEIN 1 MB Limit für `src`-Downloads (nur für `content` in MVP1). `src_file_too_large` Error-Code raus. Path-Validation analog zu MVP1 (`..` nicht erlaubt, max 260 Zeichen). UNC-Pfade (`\\server\share\...`) erlaubt. HTTP-Timeout via `HttpClient.Timeout` im Constructor.
+- **v1.0 (2026-09-23):** Initiale Spec.
 
 ## Ziel
 
@@ -19,17 +24,18 @@ Die Datei wird **physisch** in `<SitesRoot>/<site>/<path>` kopiert.
 
 `src` = **eine Datei reinholen** (kopieren), `folder` = **ganzer Ordner ohne Kopie**. Beide ergänzen MVP1 (`content` inline), sind orthogonal zueinander.
 
-**Trust-Modell:** keine Validierung der Quelle — keine Path-Traversal-Checks, keine Zertifikats-Validierung, keine Netzwerk-Sandboxing. KI trägt die Verantwortung (analog MVP4 `folder`-Type und MVP1 Trust-Modell).
+**Trust-Modell:** keine Validierung der Quelle außer `..` und 260-Zeichen-Check — keine Zertifikats-Validierung, keine Netzwerk-Sandboxing. KI trägt die Verantwortung (analog MVP4 `folder`-Type und MVP1 Trust-Modell).
 
-## Erkennungs-Logik (3 Quellen)
+## Erkennungs-Logik (3 Quellen, case-insensitive)
 
 ```
-if (src.startsWith("data:"))
+if (src.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
     → Data-URL parsen, base64 dekodieren, atomic write
-else if (src.startsWith("http://") || src.startsWith("https://"))
-    → HttpClient.GetByteArrayAsync(), atomic write
+else if (src.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+         src.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+    → HttpClient (mit Timeout via Constructor), atomic write
 else
-    → File.ReadAllBytes() (lokaler Pfad), atomic write
+    → File.ReadAllBytes() (lokaler Pfad inkl. UNC), atomic write
 ```
 
 Alle drei Pfade führen zur gleichen Zielstruktur: `<SitesRoot>/<site>/<path>` mit atomic-write (tmp + rename).
@@ -69,27 +75,30 @@ Alle drei Pfade führen zur gleichen Zielstruktur: `<SitesRoot>/<site>/<path>` m
 }
 ```
 
-**Validierung:** Mix von `content` + `src` im selben File-Eintrag → Error `invalid_file_entry`.
+**Validierung:**
+- `path` analog MVP1: kein `..`, max 260 Zeichen → `path_traversal` / `path_too_long`
+- Mix von `content` + `src` im selben File-Eintrag → `invalid_file_entry`
+- UNC-Pfade (`\\server\share\...`) sind erlaubt
 
 ### Drei `src`-Formen im Detail
 
 **1. Data URL (`data:<mime>;base64,<data>`)**
 - Server parst, base64-dekodiert, schreibt als Bytes
-- Größenlimit: 1 MB dekodierte Bytes
+- **Größenlimit:** KEIN explizites 1 MB Limit (gilt nur für `content` in MVP1). Final geschriebene Datei hat keine MVP3-spezifische Größenbeschränkung. Server-HTTP-Limit (z. B. Kestrel `MaxRequestBodySize`) gilt zusätzlich.
 - Content-Type: aus File-Extension (Mimetype aus Data-URL ignoriert — analog MVP1-Decision)
 
 **2. Lokaler Pfad (`C:/...`, `/home/...`, UNC `\\server\share\...`)**
 - `File.ReadAllBytes(src)` + atomic write in `<site>/<path>`
-- Größenlimit: 1 MB
-- Keine Path-Validierung (Trust)
+- **Größenlimit:** KEIN explizites 1 MB Limit (siehe Data-URL-Sektion)
+- Path-Validation (`..` und ≤ 260 Zeichen) wird vor dem File.ReadAllBytes geprüft
 
 **3. HTTP/HTTPS-URL (`http://...`, `https://...`)**
-- `HttpClient.GetByteArrayAsync(src)` + atomic write
-- Größenlimit: 1 MB (Stream-Limit während Download)
-- Konfiguration via `appsettings.json:Mvp3:HttpTimeoutSeconds` (default 30s)
+- `HttpClient` mit `Timeout = TimeSpan.FromSeconds(<Mvp3:HttpTimeoutSeconds>)` im Constructor erstellt
+- `HttpClient.GetByteArrayAsync(src)` + atomic write (bei 1 MB Cap OK; für größere Downloads Stream-Copy erwägen — zukünftige Optimierung)
+- **Größenlimit:** KEIN explizites 1 MB Limit (siehe Data-URL-Sektion). Server-HTTP-Limit (`MaxRequestBodySize`) gilt.
 - Cert-Validation: **keine** (LAN-only Trust-Modell)
 - Redirects: automatisch (bis 50)
-- Stream-Disk direkt (kein full-buffer bei theoretisch größeren Downloads — bei 1 MB Cap egal, aber konsistent)
+- Konfiguration: `appsettings.json:Mvp3:HttpTimeoutSeconds` (default 30s)
 
 ### Atomic-Write (alle drei Formen)
 
@@ -124,7 +133,8 @@ Default: 30s Timeout. SSL/Cert-Validation deaktiviert (Trust-Modell).
 | `content` + `src` im selben Eintrag | `invalid_file_entry` |
 | `!delete` + kein `content` UND kein `src` | `missing_content` |
 | Doppelter `path` in einem Call | `duplicate_path` |
-| Per-File-Größe > 1 MB | `file_too_large` |
+| `path` enthält `..` | `path_traversal` |
+| `path` > 260 Zeichen | `path_too_long` |
 
 ### `src`-spezifische Errors
 
@@ -134,17 +144,14 @@ Default: 30s Timeout. SSL/Cert-Validation deaktiviert (Trust-Modell).
 | `src_unreachable` | DNS / TCP-Fehler bei HTTP-URL |
 | `src_timeout` | Request-Timeout (`HttpTimeoutSeconds` überschritten) |
 | `src_fetch_failed` | HTTP 4xx / 5xx |
-| `src_file_too_large` | Stream-Größe > 1 MB während Download (transient file gelöscht) |
 
 `src_*`-Errors führen zum **Site-Deploy-Fehler** (analog MVP1 atomic-write-failures): kein partial-site-state. Atomic-Write-Semantik garantiert.
 
-### Größenlimit (1 MB auf Platte)
+### Größenlimit
 
-- 1 MB auf der **fertig geschriebenen Platte** (= Bytes nach Decoding/Read)
-- Plain-Text: String-Länge (UTF-8)
-- Data-URL: dekodierte Bytes
-- HTTP: Stream-Bytes
-- Lokaler Pfad: File-Größe
+- **Kein** MVP3-spezifisches Größenlimit für `src`-Downloads.
+- `content` (MVP1) hat 1 MB Limit (siehe MVP1-Spec).
+- Server-HTTP-Limit (Kestrel `MaxRequestBodySize`) gilt zusätzlich als Schutz gegen extreme Werte.
 
 ## Storage & Content-Type
 
@@ -167,11 +174,10 @@ physische File, danach ist alles MVP1-konform.
 
 ## Out of Scope (MVP3)
 
-- HTTP-Authentifizierung (Bearer, Basic) für HTTP-URLs — nicht im MVP
-- Caching von HTTP-Downloads — atomic-write macht Server-seitig
-  überflüssig (Site-Folder ist der "Cache")
+- HTTP-Authentifizierung (Bearer, Basic) für HTTP-URLs — nicht im MVP (siehe MVP5-Draft)
+- Caching von HTTP-Downloads — atomic-write macht Server-seitig überflüssig
 - HTTP-Proxy-Support
 - HTTP-Retries bei transienten Fehlern
-- Größere Files (> 1 MB) — explizites Limit
+- 1 MB Größenlimit für `src` — bewusst ausgenommen (siehe §Validierung)
 
 > Versionierung: v1.0 = final; Änderungen → v1.1/v2.0-Bump mit Changelog oben.

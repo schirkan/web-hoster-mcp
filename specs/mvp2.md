@@ -1,9 +1,10 @@
 # MVP2 — HTTPS + Retention + HTTP-Delete-Endpoints
 
-Stand: 2026-09-23 · v1.2 (lock)
+Stand: 2026-09-23 · v1.3 (lock)
 
 ## Changelog
 
+- **v1.3 (2026-09-23):** Range-Validation für `RetentionCheckIntervalSeconds` (1–86400). `Host:UseHttps = false` explizit: HTTPS-Listener wird NICHT gestartet. `folder`-Retention-Expiry: Registry-Eintrag weg, Host-Folder bleibt, bei Re-Deploy werden `path` + `updated_at` neu gesetzt.
 - **v1.2 (2026-09-23):** HTTP-Delete-Endpoints von GET+Confirm auf **DELETE-Methode** umgestellt (kein Confirm-Pattern, kein `/file/`-Segment); Browser-UI nutzt JS-Buttons mit `fetch(..., {method: 'DELETE'})`.
 - **v1.1 (2026-09-23):** Self-Signed-Cert mit SAN-Entries (DNS hostname + IP); Cert-Filename-Sanitization (Path-invalid-chars → `-`); Lock-Semantik-Footer.
 - **v1.0 (2026-09-23):** Initiale Spec (HTTPS + Retention + HTTP-Delete-Endpoints).
@@ -28,7 +29,7 @@ Zusätzlich zum HTTP-Listener startet der Server einen HTTPS-Listener.
 | HTTPS   | `<Host:Ip>:<Host:HttpsPort>`     | `0.0.0.0:3443` |
 
 - Gleiche IP wie HTTP (`Host:Ip`).
-- HTTPS abschaltbar: `Host:UseHttps = false` oder `Host:HttpsPort = 0`/fehlt → kein HTTPS-Listener.
+- **HTTPS off wenn `Host:UseHttps = false`** ODER `Host:HttpsPort = 0`/fehlt → kein HTTPS-Listener. Bei `UseHttps = false` wird der HTTPS-Listener NICHT gestartet, nur HTTP.
 - HTTP und HTTPS laufen parallel — **kein** HTTP→HTTPS Redirect im MVP.
 
 ## 2. HTTPS — Cert-Quelle
@@ -85,7 +86,7 @@ Wenn `appsettings.json:Https.SelfSigned.ForceRegenerate = true` → Cert immer n
 ### 3.1 Konzept
 
 - Sites bekommen ein optionales `retention_seconds`-Feld in der Registry.
-- TTL startet ab `updated_at`-Zeitstempel — Site lebt länger wenn neu beschrieben.
+- TTL startet ab `updated_at`-Zeitstempel (lokale Server-Zeit) — Site lebt länger wenn neu beschrieben.
 - Background-Timer im selben Prozess prüft regelmäßig alle Sites.
 - Bei Expiry: **Hard Delete** — `rm -rf <SitesRoot>/<site>/` + Registry-Eintrag weg.
 
@@ -104,13 +105,15 @@ Bei Site-Erstellung ohne `retention_seconds`-Angabe → Global Default wird in R
 `IHostedService` mit `Timer` (in `Microsoft.Extensions.Hosting`):
 
 ```
-RetentionCheckIntervalSeconds = appsettings.json:Retention:CheckIntervalSeconds (Default: 3600 = 1h)
+RetentionCheckIntervalSeconds = appsettings.json:Retention:CheckIntervalSeconds
+  Erlaubter Range: 1 ≤ RetentionCheckIntervalSeconds ≤ 86400 (1 Tag)
+  Default: 3600 (= 1h)
 ```
 
 Pro Tick:
 1. Lock auf `registry.json` (gleicher Mutex wie in MVP1).
 2. Registry lesen.
-3. Für jede Site: wenn `DateTimeOffset.UtcNow > updated_at + retention_seconds` → expired.
+3. Für jede Site: wenn `DateTime.Now > updated_at + retention_seconds` → expired.
 4. Expired Sites hard-deletet (siehe 3.4).
 5. Registry zurückschreiben (atomic via temp + rename).
 6. Lock freigeben.
@@ -124,7 +127,7 @@ Loggt pro Expiry: `Site expired: <site_path> (ttl=<n>s, age=<age>s)`.
 | `files`       | `rm -rf <SitesRoot>/<site>/` + Registry weg |
 | `a2ui`       | `rm -rf <SitesRoot>/<site>/` (enthält `payload.json`) + Registry weg |
 | `schema-form` | `rm -rf <SitesRoot>/<site>/` (enthält `payload.json` + alle `<submission-id>.json`) + Registry weg |
-| `folder`      | **Nur** Registry weg — Host-Folder bleibt unangetastet |
+| `folder`      | **Nur Registry-Eintrag** weg — Host-Folder bleibt unangetastet. Bei Re-Deploy werden `path` und `updated_at` neu gesetzt (TTL-Reset). |
 
 ## 4. HTTP-Delete-Endpoints (DELETE-Methode)
 
@@ -212,6 +215,9 @@ DELETE erfordert JS im Browser. Bei deaktiviertem JS:
 - Delete-Buttons nicht funktional (graceful degradation)
 - Sites trotzdem über `delete_site`-Tool löschbar (MCP-Pfad)
 
+Für Authentifizierung der HTTP-Endpoints (geplant für Production-Einsatz
+außerhalb LAN) siehe `specs/mvp5-authorization.md` (Draft).
+
 ### 4.5 MCP-Tool `delete_site` — unverändert
 
 KI benutzt weiterhin `delete_site` über MCP. Das HTTP-DELETE-Endpoint
@@ -280,7 +286,7 @@ ist im Sites-Index vorhanden.
 | Key | Default | Bedeutung |
 |-----|---------|-----------|
 | `Host:HttpsPort` | `3443` | HTTPS-Port. Effektiv abgeschaltet wenn `0`/fehlt |
-| `Host:UseHttps` | `true` | Master-Switch für HTTPS |
+| `Host:UseHttps` | `true` | Master-Switch für HTTPS (`false` → kein HTTPS-Listener) |
 | `Https:CertPath` | `null` | PFX-Pfad. `null` = kein PFX, Fallback auf Self-Signed |
 | `Https:CertPassword` | `null` | PFX-Password. Empfohlen: in `appsettings.Local.json` auslagern |
 | `Https:SelfSigned:Enabled` | `true` | Self-Signed Fallback aktiv |
@@ -289,7 +295,7 @@ ist im Sites-Index vorhanden.
 | `Https:SelfSigned:ForceRegenerate` | `false` | Cert neu generieren (überschreibt vorhandenes) |
 | `Retention:Enabled` | `true` | Master-Switch für Retention-Service |
 | `Retention:DefaultTtlSeconds` | `604800` (7 Tage) | Global Default für Site-TTL |
-| `Retention:CheckIntervalSeconds` | `3600` (1h) | Background-Timer-Intervall |
+| `Retention:CheckIntervalSeconds` | `3600` (1h) | Background-Timer-Intervall (Range: 1–86400) |
 
 **Sicherheitshinweis:** `Https:CertPassword` liegt aktuell in
 `appsettings.json` (Klartext). Für Production in
@@ -305,8 +311,8 @@ out of scope hier.
     "demo-001": {
       "site_path": "demo-001",
       "type": "files",
-      "created_at": "2026-09-22T19:25:00Z",
-      "updated_at": "2026-09-22T19:30:00Z",
+      "created_at": "2026-09-22T19:25:00",
+      "updated_at": "2026-09-22T19:30:00",
       "retention_seconds": 0
     }
   }
@@ -350,7 +356,7 @@ Beide Tools liefern zusätzlich:
 | Feld | Typ | Beschreibung |
 |------|-----|--------------|
 | `retention_seconds` | `number` | Effektiver Wert (Override oder Global Default) |
-| `expires_at` | `string \| null` | ISO-8601 des Auto-Expire-Zeitpunkts. `null` wenn `retention_seconds: 0` |
+| `expires_at` | `string \| null` | ISO-8601 des Auto-Expire-Zeitpunkts (lokale Zeit). `null` wenn `retention_seconds: 0` |
 
 `expires_at` wird **bei jedem Read berechnet** (`updated_at + retention_seconds`), nicht persistiert.
 
@@ -404,7 +410,6 @@ Hinweis: `path_traversal` wird **nicht** mehr ausgelöst (Trust-Modell, etablier
 - Let's Encrypt / ACME
 - HTTPS-Cert-Rotation / automatischer Renewal (ausser `ForceRegenerate` für manuelles Re-Generate)
 - Soft-Delete mit Trash-Folder / Recovery
-- Auth am Submit/Delete-Endpoint (LAN-only)
 - TTL-Events / Push-Notifications an KI
 - Cluster-Self-Signed-Cert-Verteilung
 - Secret-Store für `CertPassword` (lands in `appsettings.Local.json`, out of scope hier)
@@ -413,5 +418,6 @@ Hinweis: `path_traversal` wird **nicht** mehr ausgelöst (Trust-Modell, etablier
 - `appsettings.Development.json`-Trennung (existiert noch nicht)
 - Retention per User / per Folder-Target
 - Confirm-Page für DELETE (entfernt in v1.2 — Browser-UI nutzt native `confirm()`)
+- Authorization für HTTP-Endpoints (siehe `specs/mvp5-authorization.md` Draft)
 
 > Versionierung: v1.0 = final; Änderungen → v1.1/v2.0-Bump mit Changelog oben.

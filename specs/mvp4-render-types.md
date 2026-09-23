@@ -1,10 +1,11 @@
 # MVP4 — Render Types
 
-Stand: 2026-09-23 · v2.1 (lock)
+Stand: 2026-09-23 · v2.2 (lock)
 
 ## Changelog
 
-- **v2.1 (2026-09-23):** A2UI via offiziellen React-Renderer (`renderers/react/`); Lock-Semantik-Footer.
+- **v2.2 (2026-09-23):** Path-Validation analog MVP1 (`..` nicht erlaubt, max 260 Zeichen). UNC-Pfade für `folder` erlaubt. `file_count` analog für `files` und `folder` über Filesystem-Operation. 1 MB Limit für `payload.json` (a2ui, schema-form) und Submission-Body (neue Error-Codes `payload_too_large`, `submission_too_large`). NPM-Link für A2UI-React-Renderer. `folder`-Retention-Expiry: Registry-Eintrag weg, Host-Folder bleibt; bei Re-Deploy werden `path` und `updated_at` neu gesetzt.
+- **v2.1 (2026-09-23):** A2UI via offiziellen React-Renderer (`@a2ui/react` von npmjs); Lock-Semantik-Footer.
 - **v2.0 (2026-09-22):** `render_type` → `type` (Umbenennung, `type_immutable`), `folder`-Type neu mit Subfolder-Support.
 - (vorherige Versionen) Siehe Git-History.
 
@@ -54,15 +55,15 @@ extern im Host-Folder, der Server liest nur (kein Copy).
     "demo-001": {
       "site_path": "demo-001",
       "type": "files",
-      "created_at": "2026-09-22T19:25:00Z",
-      "updated_at": "2026-09-22T19:30:00Z",
+      "created_at": "2026-09-22T19:25:00",
+      "updated_at": "2026-09-22T19:30:00",
       "retention_seconds": 0
     }
   }
 }
 ```
 
-`retention_seconds` optional, default `0` = kein Auto-Expire (siehe MVP2).
+`retention_seconds` optional, default `0` = kein Auto-Expire (siehe MVP2 §3).
 
 ## Configuration (`appsettings.json`)
 
@@ -93,7 +94,7 @@ extern im Host-Folder, der Server liest nur (kein Copy).
 ```
 
 - `path` kann Subfolder enthalten: `css/style.css`
-- **Keine Path-Validation** — auch nicht für `..` oder absolute Pfade
+- **Path-Validation:** kein `..`, max 260 Zeichen (analog MVP1 §Tools/1)
 - `mode: "merge"` (default): jedes File `delete: true` → weg; sonst add oder replace; Files nicht im Call bleiben (auch in Subfolders)
 - `mode: "replace"`: alle alten Files weg, exakt die Files aus dem Call; `delete: true` ignoriert
 - `src` (MVP3) als Alternative zu `content` — siehe `specs/mvp3.md`
@@ -109,9 +110,13 @@ extern im Host-Folder, der Server liest nur (kein Copy).
 ```
 
 - `path` ist absoluter Pfad zum Host-Folder
-- **Keine Path-Validation** (kein Existenz-Check, kein Directory-Check)
+- **Path-Validation:**
+  - `..` (Parent-Directory-Traversal) NICHT erlaubt → `path_traversal`
+  - Pfad-Länge max **260 Zeichen** (Windows `MAX_PATH`) → `path_too_long`
+  - UNC-Pfade (`\\server\share\...`) erlaubt
+- Keine Existenz-Checks, kein Permission-Check (Trust-Modell)
 - `files[]` und `payload` nicht erlaubt
-- Bei Update: nur `path` ändert sich (oder neuer Pfad)
+- Bei Update: nur `path` ändert sich; `updated_at` wird auf lokale Server-Zeit gesetzt (TTL-Reset)
 
 ### `type: "a2ui"`
 
@@ -125,7 +130,8 @@ extern im Host-Folder, der Server liest nur (kein Copy).
 }
 ```
 
-- `payload` ersetzt `payload.json` **komplett** bei jedem `deploy`
+- **Größenlimit:** `payload` max **1 MB** (JSON-size auf Platte) → `payload_too_large`
+- `payload` ersetzt `payload.json` komplett bei jedem `deploy`
 - Keine `merge`/`replace`-Unterscheidung
 - `files[]` nicht erlaubt
 
@@ -142,7 +148,8 @@ extern im Host-Folder, der Server liest nur (kein Copy).
 }
 ```
 
-- `payload` ersetzt `payload.json` **komplett**
+- **Größenlimit:** `payload` max **1 MB** (JSON-size auf Platte) → `payload_too_large`
+- `payload` ersetzt `payload.json` komplett
 - Submissions (`<submission-id>.json`) separat, bleiben erhalten
 
 ## `deploy`-Validierung
@@ -152,15 +159,20 @@ extern im Host-Folder, der Server liest nur (kein Copy).
 | `site_path` verletzt `^[a-z0-9-]{3,32}$` | `invalid_site_id` |
 | `type` ungültig | `invalid_type` |
 | Bestehende Site + `type` weicht ab | `type_immutable` |
+| `type: "folder"` `path` enthält `..` | `path_traversal` |
+| `type: "folder"` `path` > 260 Zeichen | `path_too_long` |
+| `type: "files"` `path` enthält `..` | `path_traversal` |
+| `type: "files"` `path` > 260 Zeichen | `path_too_long` |
 | `type: "files"` + `path` doppelt im Call | `duplicate_path` |
-| `type: "files"` + `delete: true` + (`content` oder `src`) | `invalid_file_entry` |
+| `type: "files"` + `delete: true` + (`content` ODER `src`) | `invalid_file_entry` |
 | `type: "files"` + `!delete` + kein `content` UND kein `src` | `missing_content` |
-| `type: "files"` + dekodierte File > 1 MB | `file_too_large` |
+| `type: "files"` `content` > 1 MB auf Platte | `file_too_large` |
 | `type: "files"` + `payload` | `payload_not_allowed_for_files` |
+| `type: "a2ui"`/`schema-form"` `payload` > 1 MB | `payload_too_large` |
 | `type: "folder"` ohne `path` | `path_required` |
-| `type: "a2ui"`/`schema-form` ohne `payload` | `payload_required` |
+| `type: "a2ui"`/`schema-form"` ohne `payload` | `payload_required` |
 | `type != "files"` + `files[]` | `files_not_allowed_for_<type>` |
-| `mode: "replace"` + `files: []` | `empty_files_not_allowed` |
+| `mode: "replace"` + `files: []` | (kein Error — siehe MVP1 v1.3 Empty-Files-Verhalten) |
 
 ## HTTP-Serving pro Type
 
@@ -168,28 +180,28 @@ extern im Host-Folder, der Server liest nur (kein Copy).
 
 - `GET /<site>/<file>` → Datei serven (mit Subfolder-Pfaden: `css/style.css`)
 - `GET /<site>/` → Directory-Listing rekursiv (siehe `mvp2-directory-listing.md`)
-- `GET /<site>/delete?confirm=yes` → Site-Folder + Registry-Eintrag löschen (MVP2)
-- `GET /<site>/delete-file/<path>?confirm=yes` → File löschen (auch in Subfolders, MVP2)
+- `DELETE /<site>` → Site-Folder + Registry-Eintrag löschen (MVP2 v1.2)
+- `DELETE /<site>/<file>` → File löschen (auch in Subfolders, MVP2 v1.2)
 
 ### `type: "folder"`
 
 - `GET /<site>/<file>` → Datei aus `<host-path>/<file>` serven (mit Subfolders)
 - `GET /<site>/` → Directory-Listing des Host-Folders
-- `GET /<site>/delete?confirm=yes` → **Nur Registry-Eintrag** löschen (Host-Folder bleibt!)
-- `GET /<site>/delete-file/<path>?confirm=yes` → **404** (nicht implementiert für folder)
+- `DELETE /<site>` → **Nur Registry-Eintrag** löschen (Host-Folder bleibt!)
+- `DELETE /<site>/<file>` → **404** (kein File-Delete bei folder)
 
 ### `type: "a2ui"`
 
 - `GET /<site>/` → A2UI-Render (React + A2UI-Renderer, siehe unten)
 - `GET /<site>/<file>` → **404** (a2ui hat keine servable Files)
-- `GET /<site>/delete?confirm=yes` → Site löschen (`payload.json` + Registry)
+- `DELETE /<site>` → Site löschen (`payload.json` + Registry)
 
 ### `type: "json-schema-form"`
 
 - `GET /<site>/` → RJSF-Render (React + RJSF, siehe unten)
 - `GET /<site>/<file>` → **404**
-- `POST /<site>/submit` → Submission speichern (siehe unten)
-- `GET /<site>/delete?confirm=yes` → Site löschen (`payload.json` + Submissions + Registry)
+- `POST /<site>/submit` → Submission speichern (siehe unten; **Body-Größenlimit 1 MB** → `submission_too_large`)
+- `DELETE /<site>` → Site löschen (`payload.json` + Submissions + Registry)
 
 ## React-basierte Render-Pipeline (für `a2ui` und `json-schema-form`)
 
@@ -221,9 +233,7 @@ Eine HTML-Template, mit Mount-Script pro Type:
 
 - Mountet den A2UI-React-Renderer mit `SITE.payload.messages`
 - Spec: A2UI **v0.9.1** (current) — `https://a2ui.org/specification/v0.9.1-a2ui/`
-- **Renderer:** offizieller React-Renderer aus
-  [a2ui-project/a2ui/tree/main/renderers/react](https://github.com/a2ui-project/a2ui/tree/main/renderers/react)
-  via CDN geladen
+- **Renderer:** offizieller React-Renderer [`@a2ui/react`](https://www.npmjs.com/package/@a2ui/react) via CDN geladen
 
 ### JSON-Schema-Form Mount
 
@@ -235,12 +245,13 @@ Eine HTML-Template, mit Mount-Script pro Type:
 
 `POST /<site_path>/submit` — nur bei `type: "json-schema-form"`.
 
+**Body-Größenlimit: 1 MB** (analog `payload`). Größere Bodies → `submission_too_large`.
+
 **Body:** beliebiges JSON
 
 **Verhalten:**
 
 - Submission-ID: `yyyy-MM-ddTHH-mm-ss_<random8>.json`
-  (z. B. `2026-09-22T21-30-00_a8f2k1d3.json`)
 - Speichern in `<SitesRoot>/<site_path>/<submission-id>.json`
 - Body = File-Content
 
@@ -249,14 +260,17 @@ Eine HTML-Template, mit Mount-Script pro Type:
 ```json
 {
   "submission_id": "2026-09-22T21-30-00_a8f2k1d3",
-  "received_at": "2026-09-22T21:30:00Z"
+  "received_at": "2026-09-22T21:30:00"
 }
 ```
+
+`received_at` in lokaler Server-Zeit, ISO-8601 ohne Timezone-Suffix.
 
 **Fehler:**
 
 - `submit_not_allowed` — `type != "json-schema-form"`
 - `site_not_found` — Site existiert nicht
+- `submission_too_large` — Body > 1 MB
 - `invalid_json` — Body ist kein gültiges JSON
 
 ## Neue Tools
@@ -268,12 +282,12 @@ Eine HTML-Template, mit Mount-Script pro Type:
 ```json
 {
   "site_path": "form-001",
-  "since": "2026-09-22T18:00:00Z",
+  "since": "2026-09-22T18:00:00",
   "limit": 50
 }
 ```
 
-- `since` optional — ISO-8601; nur Submissions danach
+- `since` optional — ISO-8601 (lokale Zeit); nur Submissions danach
 - `limit` optional, default 50, max 500
 
 **Output** (Array direkt, neueste zuerst):
@@ -282,11 +296,27 @@ Eine HTML-Template, mit Mount-Script pro Type:
 [
   {
     "submission_id": "2026-09-22T21-30-00_a8f2k1d3",
-    "received_at": "2026-09-22T21:30:00Z",
+    "received_at": "2026-09-22T21:30:00",
     "data": {/* eingegangene Form-Daten */}
   }
 ]
 ```
+
+## file_count Berechnung
+
+`file_count` wird **analog für `files` und `folder`** über Filesystem-Operationen berechnet:
+
+- `type: "files"`: `Directory.EnumerateFiles(<site>, "*", SearchOption.AllDirectories).Count()`
+- `type: "folder"`: `Directory.EnumerateFiles(<host-path>, "*", SearchOption.AllDirectories).Count()`
+
+Beide via lokaler Disk-Operation. Für typische Folder-Größen schnell; bei 10k+ Files kann `EnumerateFiles` spürbar sein.
+
+## Retention für `folder`-Type
+
+Wenn `updated_at + retention_seconds` für eine `folder`-Site überschritten ist:
+- **Registry-Eintrag wird entfernt**
+- Host-Folder bleibt **unangetastet**
+- Bei Re-Deploy wird `path` neu gesetzt und `updated_at` aktualisiert (TTL-Reset)
 
 ## Error Codes
 
@@ -296,13 +326,16 @@ Eine HTML-Template, mit Mount-Script pro Type:
 | `invalid_type` | `type` nicht in erlaubter Liste |
 | `type_immutable` | Site existiert + `type` weicht ab |
 | `site_not_found` | `site_path` existiert nicht |
+| `path_traversal` | `path` enthält `..` |
+| `path_too_long` | `path` > 260 Zeichen |
 | `duplicate_path` | gleicher `path` mehrfach in einem `deploy`-Call |
 | `invalid_file_entry` | `delete: true` + `content`/`src` gleichzeitig |
 | `missing_content` | File ohne `content`, ohne `src`, und ohne `delete: true` |
-| `file_too_large` | dekodierte File > 1 MB |
-| `empty_files_not_allowed` | `replace`-Modus mit `files: []` |
+| `file_too_large` | `content` > 1 MB auf Platte |
+| `payload_too_large` | `payload` > 1 MB (a2ui/schema-form) |
+| `submission_too_large` | Submission-Body > 1 MB |
 | `path_required` | `type: "folder"` ohne `path` |
-| `payload_required` | `type: "a2ui"`/`schema-form` ohne `payload` |
+| `payload_required` | `type: "a2ui"`/`schema-form"` ohne `payload` |
 | `payload_not_allowed_for_files` | `type: "files"` mit `payload` |
 | `files_not_allowed_for_folder` | `type: "folder"` mit `files[]` |
 | `files_not_allowed_for_a2ui` | `type: "a2ui"` mit `files[]` |
@@ -313,19 +346,15 @@ Eine HTML-Template, mit Mount-Script pro Type:
 | `src_unreachable` | (MVP3) HTTP-URL DNS/TCP-Fehler |
 | `src_timeout` | (MVP3) HTTP-URL Timeout |
 | `src_fetch_failed` | (MVP3) HTTP 4xx/5xx |
-| `src_file_too_large` | (MVP3) Stream > 1 MB |
 | `internal_error` | Unerwarteter Server-Fehler |
 
 ## Out of Scope (MVP4)
 
-- **Path-Validation** (`path_traversal`, Whitelist, Existenz-Checks) — Trust-Modell
-- HTTPS (→ MVP2)
-- Auto-Delete / Retention (→ MVP2)
+- **HTTP-Authentifizierung** — siehe `specs/mvp5-authorization.md` (Draft)
 - WebSocket-Streaming für A2UI progressive rendering
-- Submission-TTL / Auto-Cleanup (kommt mit MVP2-Retention)
 - Submit-Webhooks
 - Custom Render-Themes
-- Auth auf Submit-Endpoint (LAN-only MVP4)
+- Auth auf Submit-Endpoint (LAN-only MVP)
 - A2UI-Action-Callbacks (User-Interaktion zurück zum Agent) — für MVP4 nur Render
 
 > Versionierung: v1.0 = final; Änderungen → v1.1/v2.0-Bump mit Changelog oben.
