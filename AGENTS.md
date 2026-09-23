@@ -46,7 +46,12 @@ Stand: 2026-09-23 (19:20)
 
 ## CI/CD
 
-(Wird ergänzt, falls ein Workflow eingerichtet wird.)
+- **Plattform:** GitHub Actions
+- **Workflow-Datei(en):** `.github/workflows/ci.yml`
+- **Trigger:** Push auf `main`, Pull Request auf `main`
+- **Was wird gebaut:** .NET 8 Solution (`WebHosterMcp.sln`) + Tests + Publish-Artefakt für Host
+- **Output / Artefakte:** GitHub Actions Artifact `WebHosterMcp.Host-win-x64` (Ordner `out/WebHosterMcp.Host`)
+- **Letzter bekannter Lauf:** lokal vorbereitet am 2026-09-23, Commit ausstehend
 
 ---
 

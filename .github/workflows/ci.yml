@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore WebHosterMcp.sln
+
+      - name: Build
+        run: dotnet build WebHosterMcp.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test WebHosterMcp.sln --configuration Release --no-build --verbosity normal
+
+      - name: Publish Host Artifact
+        run: dotnet publish src/WebHosterMcp.Host/WebHosterMcp.Host.csproj --configuration Release --no-build --output out/WebHosterMcp.Host
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WebHosterMcp.Host-win-x64
+          path: out/WebHosterMcp.Host
