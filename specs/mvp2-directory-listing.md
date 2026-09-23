@@ -1,6 +1,12 @@
 # MVP2 — Directory Listing
 
-Stand: 2026-09-22 · v1.1 (lock, angepasst für Render-Types)
+Stand: 2026-09-23 · v1.2 (lock)
+
+## Changelog
+
+- **v1.2 (2026-09-23):** Lock-Semantik-Footer.
+- **v1.1 (2026-09-22):** Type-aware Verhalten — kein Listing bei `a2ui`/`schema-form`.
+- **v1.0 (2026-09-22):** Initiale Spec.
 
 ## Ziel
 
@@ -145,3 +151,5 @@ Identische Struktur, aber Files kommen aus `<host-path>/` statt
 - Sort-Optionen (Datum, Größe)
 - i18n (deutsch / englisch)
 - File-Delete-Links im Listing (kommt mit MVP2 HTTP-Endpoints, separater Patch)
+
+> Versionierung: v1.0 = final; Änderungen → v1.1/v2.0-Bump mit Changelog oben.

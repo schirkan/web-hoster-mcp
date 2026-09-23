@@ -2,23 +2,22 @@
 
 Projekt: **Web Hoster MCP**
 Status: Initialisierung
-Letztes Update: 2026-09-22
+Letztes Update: 2026-09-23
 
 ---
 
 ## Current Status
 
-Stand: 2026-09-23 (08:30)
+Stand: 2026-09-23 (14:14)
 
-- [x] MVP1-Spec v1.1: `specs/mvp1.md` — `type: "files"`-Pfad, 4 Tools, Subfolders, Trust-Path-Modell
-- [x] MVP2-Spec v1.0: `specs/mvp2.md` — HTTPS (Beides, separate Port, Self-Signed Fallback) + Retention (7d Default, 1h Interval, Background-Timer, Hard Delete) + HTTP-Delete-Endpoints (Confirm-Pattern)
-- [x] MVP2-Listing v1.1: `specs/mvp2-directory-listing.md`
-- [x] MVP3 `src` (Idee + Pro/Contra): `specs/mvp3-external-src.md`
-- [x] MVP4 Render-Types v2.0: `specs/mvp4-render-types.md` — 4 Types, React+RJSF+A2UI
+- [x] MVP1-Spec v1.2: `specs/mvp1.md` — `type: "files"`-Pfad, 4 Tools, `content` plain-only, `src`/Data-URL/MVP3-verwiesen, Retention/expires_at dokumentiert, Lock-Semantik-Footer
+- [x] MVP2-Spec v1.1: `specs/mvp2.md` — HTTPS (Beides, separate Port, Self-Signed inkl. SAN) + Retention (7d Default, 1h Interval, Background-Timer, Hard Delete) + HTTP-Delete-Endpoints mit Confirm-Pattern + Delete-Links + Lock-Semantik-Footer
+- [x] MVP2-Listing v1.2: `specs/mvp2-directory-listing.md` — Lock-Semantik-Footer
+- [x] MVP3-Spec v1.0: `specs/mvp3.md` — per-File `src` mit Data URL / lokaler Pfad / HTTP-URL, Trust-Modell, Lock-Semantik-Footer
+- [x] MVP4 Render-Types v2.1: `specs/mvp4-render-types.md` — A2UI via offiziellen React-Renderer (`renderers/react/`), Lock-Semantik-Footer
 - [x] GitHub-Repo `schirkan/web-hoster-mcp` ist **public**
-- [x] Workboard `web-hoster-mcp` angelegt (26 Karten, alle in `backlog`)
-- [ ] Karten auf Workboard nach `specify` ziehen (Acceptance Criteria schärfen)
-- [ ] Implementierung starten (high-Karten aus MVP1 zuerst)
+- [x] Workboard `web-hoster-mcp` angelegt (26 Karten, 1 done + 25 backlog)
+- [ ] Implementierung starten (Workboard-Karten claimen + arbeiten)
 
 ---
 
@@ -45,7 +44,7 @@ Stand: 2026-09-23 (08:30)
 Board-ID: `web-hoster-mcp` (= Projektordner-Name)
 Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 
-**Stats:** 26 Karten, alle in `backlog`
+**Stats:** 26 Karten — 1 done + 25 backlog
 
 ### MVP1 — Base (7 Karten)
 
@@ -63,21 +62,21 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 
 | ID | Titel | Priorität |
 |----|-------|-----------|
-| 6a49c9ad | MVP2-Spec: HTTPS + Retention + Delete-Endpoints schreiben | high |
+| 6a49c9ad | MVP2-Spec: HTTPS + Retention + Delete-Endpoints schreiben | high — **done** (Commit dd55944) |
 | d1dbec46 | HTTPS-Endpoint + Cert-Loading (PFX + Self-Signed Fallback) | normal |
 | 4c858484 | Retention-Background-Service (TTL + Auto-Delete) | normal |
 | 775a5686 | HTTP-Delete-Endpoints mit Confirm-Pattern | normal |
 | a65169c7 | Delete-Links in Directory-Listings | normal |
 | c2a52cad | E2E-Test MVP2 (HTTPS + TTL + Delete-Links) | high |
 
-### MVP3 — External src (4 Karten)
+### MVP3 — Per-File src (4 Karten)
 
 | ID | Titel | Priorität |
 |----|-------|-----------|
-| e177237e | src-Field + Trust-Model | normal |
-| 959769fe | Path-Read + Content-Storage für src | normal |
-| f32fb8a0 | Integration src in deploy-Tool | normal |
-| 23efd0b1 | E2E-Test MVP3 (src) | normal |
+| e177237e | src-Field + Trust-Model (Data URL / local / HTTP) | normal |
+| 959769fe | Path-Read + HTTP-Download + Data-URL-Decode + Content-Storage | normal |
+| f32fb8a0 | Integration src in deploy-Tool (MVP1 Validation erweitern) | normal |
+| 23efd0b1 | E2E-Test MVP3 (data-URL / local / HTTP) | normal |
 
 ### MVP4 — Render Types (9 Karten)
 
@@ -88,7 +87,7 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 | 91948250 | folder-Type (Host-Folder-Mirror) | normal |
 | f975b7a0 | files-Type Subfolder-Support (rekursives Listing) | normal |
 | 78196a80 | React-Template-Generator (HTML + CDN-Scripts) | high |
-| b2f0e65e | A2UI-Render-Pipeline | normal |
+| b2f0e65e | A2UI-Render-Pipeline (offizieller React-Renderer) | normal |
 | ed171227 | Schema-Form-Render-Pipeline (RJSF) | normal |
 | 9567975c | Submit-Endpoint + get_submissions Tool | normal |
 | 2c27bae7 | E2E-Test MVP4 (a2ui + schema-form + folder) | high |
@@ -101,11 +100,12 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 
 | Spec | Status |
 |------|--------|
-| `mvp1.md` | ✅ v1.1 locked |
-| `mvp2.md` | ✅ v1.0 locked |
-| `mvp2-directory-listing.md` | ✅ v1.1 locked |
-| `mvp3-external-src.md` | 📝 Idee + Pro/Contra |
-| `mvp4-render-types.md` | ✅ v2.0 locked |
+| `mvp1.md` | ✅ v1.2 locked |
+| `mvp2.md` | ✅ v1.1 locked |
+| `mvp2-directory-listing.md` | ✅ v1.2 locked |
+| `mvp3.md` | ✅ v1.0 locked |
+| `mvp4-render-types.md` | ✅ v2.1 locked |
+| `_archive/mvp3-external-src-draft.md` | 📝 Alter Draft |
 
 ---
 

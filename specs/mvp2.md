@@ -1,6 +1,11 @@
 # MVP2 — HTTPS + Retention + HTTP-Delete-Endpoints
 
-Stand: 2026-09-23 · v1.0 (lock)
+Stand: 2026-09-23 · v1.1 (lock)
+
+## Changelog
+
+- **v1.1 (2026-09-23):** Self-Signed-Cert mit SAN-Entries (DNS hostname + IP); Cert-Filename-Sanitization (Path-invalid-chars → `-`); Lock-Semantik-Footer.
+- **v1.0 (2026-09-23):** Initiale Spec (HTTPS + Retention + HTTP-Delete-Endpoints).
 
 ## Ziel
 
@@ -54,9 +59,16 @@ Aktiv wenn `appsettings.json:Https.SelfSigned.Enabled = true` UND kein PFX gelad
 
 - RSA 2048, SHA-256, `RSASignaturePadding.Pkcs1`.
 - `CN` = `appsettings.json:Https.SelfSigned.Cn` falls gesetzt, sonst `Environment.MachineName`.
+- **SAN-Entries** zusätzlich zum CN:
+  - `DNS:<hostname>` (z. B. `DNS:martin-laptop` oder `DNS:martin-laptop.local`)
+  - `IP:<lan-ip>` (autodetected via NetworkInterface, analog zu `result_path`)
+  - `IP:127.0.0.1` (loopback, für lokale Browser-Tests)
 - Gültigkeit: 1 Jahr (`NotBefore = DateTimeOffset.UtcNow.AddDays(-1)`, `NotAfter = DateTimeOffset.UtcNow.AddYears(1)`).
 - Export als PFX (Password aus `appsettings.json:Https.CertPassword`).
-- Speichern unter `<Https.SelfSigned.CertDir>/<sanitized-hostname>.pfx`.
+- **Filename-Sanitization:**
+  - Dateiname = sanitized hostname (lowercase, `Path.GetInvalidFileNameChars()` → `-`)
+  - Beispiel: `MARTIN-PC` → `martin-pc`, `my:host` → `my-host`
+  - Speichern unter `<Https.SelfSigned.CertDir>/<sanitized-hostname>.pfx`
 - Idempotent: bei späteren Starts wird vorhandenes Cert wiederverwendet (kein Re-Generate wenn File existiert und gültig).
 
 **Browser-Warnung:**
@@ -109,8 +121,8 @@ Loggt pro Expiry: `Site expired: <site_path> (ttl=<n>s, age=<age>s)`.
 | Render-Type | Bei Expiry |
 |-------------|------------|
 | `files`       | `rm -rf <SitesRoot>/<site>/` + Registry weg |
-| `a2ui`       | `rm -rf <SitesRoot>/<site>/` (enthaelt `payload.json`) + Registry weg |
-| `schema-form` | `rm -rf <SitesRoot>/<site>/` (enthaelt `payload.json` + alle `<submission-id>.json`) + Registry weg |
+| `a2ui`       | `rm -rf <SitesRoot>/<site>/` (enthält `payload.json`) + Registry weg |
+| `schema-form` | `rm -rf <SitesRoot>/<site>/` (enthält `payload.json` + alle `<submission-id>.json`) + Registry weg |
 | `folder`      | **Nur** Registry weg — Host-Folder bleibt unangetastet |
 
 ## 4. HTTP-Delete-Endpoints
@@ -374,3 +386,5 @@ Hinweis: `path_traversal` wird **nicht** mehr ausgelöst (Trust-Modell, etablier
 - HSTS-Header
 - `appsettings.Development.json`-Trennung (existiert noch nicht)
 - Retention per User / per Folder-Target
+
+> Versionierung: v1.0 = final; Änderungen → v1.1/v2.0-Bump mit Changelog oben.

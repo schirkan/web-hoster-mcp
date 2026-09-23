@@ -1,15 +1,17 @@
 # MVP1 — Web Hoster MCP (Base)
 
-Stand: 2026-09-22 · v1.1 (lock, refaktoriert für MVP4 v2)
+Stand: 2026-09-23 · v1.2 (lock)
 
 ## Ziel
 
 MCP-Server (C# / .NET 8, Windows), der einer KI **vier Tools**
 bereitstellt, um statische Web-Inhalte im **lokalen Netz** zu hosten.
 
-Diese Spec deckt **`type: "files"`** (Default-Render-Type). Weitere
-Render-Types (`folder`, `a2ui`, `json-schema-form`) sind in
-`specs/mvp4-render-types.md` definiert.
+Diese Spec deckt **`type: "files"`** (Default-Render-Type) ab.
+Weitere Render-Types (`folder`, `a2ui`, `json-schema-form`) sind in
+`specs/mvp4-render-types.md` definiert. Für alternative File-Quellen
+über `src` (Data URL, lokaler Pfad, HTTP/HTTPS-URL) siehe
+`specs/mvp3.md`.
 
 ## Server
 
@@ -47,7 +49,7 @@ Render-Types (`folder`, `a2ui`, `json-schema-form`) sind in
 }
 ```
 
-`type` default `"files"`. `retention_seconds` optional, default `0` = kein Auto-Expire.
+`type` default `"files"`. `retention_seconds` optional, default `0` = kein Auto-Expire (siehe MVP2 §Retention).
 
 ## Configuration (`appsettings.json`)
 
@@ -70,8 +72,10 @@ Render-Types (`folder`, `a2ui`, `json-schema-form`) sind in
   "site_path": "demo-001",
   "type": "files",
   "mode": "merge",
+  "retention_seconds": 3600,
   "files": [
     {"path": "index.html", "content": "<!DOCTYPE html>..."},
+    {"path": "logo.png", "content": "data:image/png;base64,iVBOR..."},
     {"path": "css/style.css", "content": "body { margin: 0 }"},
     {"path": "old.html", "delete": true}
   ]
@@ -85,15 +89,20 @@ Render-Types (`folder`, `a2ui`, `json-schema-form`) sind in
   - Ungültig → `invalid_type`
   - Bei bestehender Site + `type` weicht ab → `type_immutable`
 - `mode` (optional, default `"merge"`): `"merge"` | `"replace"`
+- `retention_seconds` (optional, default `0`):
+  - weggelassen bei Update → bestehender Wert bleibt
+  - weggelassen bei neuer Site → Global Default aus `Retention:DefaultTtlSeconds` (siehe MVP2 §3)
+  - `0` → nie ablaufen
+  - `> 0` → nach N Sekunden ab `updated_at`
 - `files[]`:
   - jeder Eintrag: `path` Pflicht, kann `/` enthalten (Subfolder)
   - **keine Path-Validation** — auch `..` oder absolute Pfade werden akzeptiert (Trust-Modell)
-  - entweder `content` oder `delete: true`, niemals beides
+  - jeder Eintrag hat entweder `content` ODER `src` ODER `delete: true` — niemals Kombinationen
+  - `content` plain → als UTF-8-Text speichern (KEINE Data-URL-Sonderbehandlung; Data URLs gehören in `src`, siehe MVP3)
+  - `src` → alternative Quelle (Data URL / lokaler Pfad / HTTP-URL), Verhalten in MVP3
   - **doppelter `path` in einem Call → Fehler `duplicate_path`**
-  - `content` mit `data:`-Präfix → Data-URL parsen + base64 dekodieren
-  - `content` plain → als UTF-8-Text speichern
-  - Content-Type kommt **ausschließlich** aus File-Extension (Mimetype aus Data-URL ignoriert)
-  - Per-File-Größe max **1 MB auf Platte** (dekodierte Bytes) → sonst `file_too_large`
+  - Content-Type kommt **ausschließlich** aus File-Extension
+  - Per-File-Größe max **1 MB auf Platte** → sonst `file_too_large`
 
 **Mode-Semantik:**
 
@@ -137,14 +146,20 @@ Gelöschte Files erscheinen **nicht** in `files[]`.
     "site_path": "demo-001",
     "type": "files",
     "file_count": 3,
+    "retention_seconds": 3600,
     "created_at": "2026-09-22T19:25:00Z",
     "updated_at": "2026-09-22T19:30:00Z",
+    "expires_at": "2026-09-29T19:30:00Z",
     "url": "http://192.168.x.x:3000/demo-001/"
   }
 ]
 ```
 
 `file_count` per `Directory.EnumerateFiles(<site>, "*", SearchOption.AllDirectories).Count()`.
+
+`retention_seconds` = effektiver Wert (Override aus `deploy.retention_seconds` oder Global Default).
+
+`expires_at` = ISO-8601 Zeitstempel (`updated_at + retention_seconds`), `null` wenn `retention_seconds: 0`. Berechnet beim Read, nicht persistiert.
 
 ### 3. `get_site_info`
 
@@ -157,14 +172,16 @@ Gelöschte Files erscheinen **nicht** in `files[]`.
   "site_path": "demo-001",
   "type": "files",
   "file_count": 3,
+  "retention_seconds": 3600,
   "created_at": "2026-09-22T19:25:00Z",
-  "updated_at": "2026-09-22T19:30:00Z",
-  "url": "http://192.168.x.x:3000/demo-001/",
-  "files": [
-    {"path": "index.html", "result_path": "http://192.168.x.x:3000/demo-001/index.html"},
-    {"path": "css/style.css", "result_path": "http://192.168.x.x:3000/demo-001/css/style.css"}
-  ]
-}
+    "updated_at": "2026-09-22T19:30:00Z",
+    "expires_at": "2026-09-29T19:30:00Z",
+    "url": "http://192.168.x.x:3000/demo-001/",
+    "files": [
+      {"path": "index.html", "result_path": "http://192.168.x.x:3000/demo-001/index.html"},
+      {"path": "css/style.css", "result_path": "http://192.168.x.x:3000/demo-001/css/style.css"}
+    ]
+  }
 ```
 
 ### 4. `delete_site`
@@ -211,10 +228,9 @@ Löscht `<SitesRoot>/<site_path>/` und den Registry-Eintrag.
 | `invalid_site_id` | `site_path` verletzt `^[a-z0-9-]{3,32}$` |
 | `site_not_found` | `site_path` existiert nicht |
 | `duplicate_path` | gleicher `path` mehrfach in einem `deploy`-Call |
-| `invalid_file_entry` | `delete: true` + `content` gleichzeitig |
-| `missing_content` | File ohne `content` und ohne `delete: true` |
-| `file_too_large` | dekodierte File > 1 MB |
-| `invalid_data_url` | Data-URL kaputt / base64 ungültig |
+| `invalid_file_entry` | `delete: true` + (`content` ODER `src`) gleichzeitig |
+| `missing_content` | File ohne `content`, ohne `src`, und ohne `delete: true` |
+| `file_too_large` | File > 1 MB auf Platte |
 | `empty_files_not_allowed` | `replace`-Modus mit `files: []` |
 | `invalid_type` | `type` nicht in erlaubter Liste (siehe MVP4) |
 | `type_immutable` | Site existiert + `type` weicht ab |
@@ -226,6 +242,9 @@ Löscht `<SitesRoot>/<site_path>/` und den Registry-Eintrag.
 - Auto-Delete / Retention (→ MVP2)
 - Directory Listing & Sites-Index (→ MVP2)
 - Render-Types `folder`/`a2ui`/`json-schema-form` (→ MVP4)
-- `src`-Parameter pro File (→ MVP3, separate Idee)
+- `src`-Parameter pro File (Data URL / lokaler Pfad / HTTP-URL) (→ MVP3)
+- Data-URL-Sonderbehandlung in `content` — Data URLs gehören in `src` (MVP3)
 - Submit-Endpoint + `get_submissions` (→ MVP4)
-- **Path-Validation** (`path_traversal`, Whitelist) — Trust-Modell, siehe MVP4
+- **Path-Validation** (`path_traversal`, Whitelist) — Trust-Modell
+
+> Versionierung: v1.0 = final; Änderungen → v1.1/v2.0-Bump mit Changelog oben.

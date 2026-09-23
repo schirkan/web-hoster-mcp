@@ -1,12 +1,21 @@
 # MVP4 — Render Types
 
-Stand: 2026-09-22 · v2.0 (lock)
+Stand: 2026-09-23 · v2.1 (lock)
+
+## Changelog
+
+- **v2.1 (2026-09-23):** A2UI via offiziellen React-Renderer (`renderers/react/`); Lock-Semantik-Footer.
+- **v2.0 (2026-09-22):** `render_type` → `type` (Umbenennung, `type_immutable`), `folder`-Type neu mit Subfolder-Support.
+- (vorherige Versionen) Siehe Git-History.
 
 ## Ziel
 
 Sites können einen Render-Type haben: `files` (default), `folder`, `a2ui`
 oder `json-schema-form`. Pro Site genau ein Render-Type (kein Mixing).
 Server liefert je nach Type die passende HTTP-Antwort.
+
+Für MVP3-File-Quellen (`src`: Data URL, lokaler Pfad, HTTP-URL) siehe
+`specs/mvp3.md`.
 
 ## Render Types
 
@@ -53,8 +62,7 @@ extern im Host-Folder, der Server liest nur (kein Copy).
 }
 ```
 
-`retention_seconds` optional, default `0` = kein Auto-Expire. Siehe
-`specs/mvp2.md` (Retention) sobald geschrieben.
+`retention_seconds` optional, default `0` = kein Auto-Expire (siehe MVP2).
 
 ## Configuration (`appsettings.json`)
 
@@ -78,7 +86,8 @@ extern im Host-Folder, der Server liest nur (kein Copy).
   "files": [
     {"path": "index.html", "content": "<!DOCTYPE html>..."},
     {"path": "css/style.css", "content": "body { margin: 0 }"},
-    {"path": "old.html", "delete": true}
+    {"path": "old.html", "delete": true},
+    {"path": "logo.png", "src": "data:image/png;base64,iVBOR..."}
   ]
 }
 ```
@@ -87,6 +96,7 @@ extern im Host-Folder, der Server liest nur (kein Copy).
 - **Keine Path-Validation** — auch nicht für `..` oder absolute Pfade
 - `mode: "merge"` (default): jedes File `delete: true` → weg; sonst add oder replace; Files nicht im Call bleiben (auch in Subfolders)
 - `mode: "replace"`: alle alten Files weg, exakt die Files aus dem Call; `delete: true` ignoriert
+- `src` (MVP3) als Alternative zu `content` — siehe `specs/mvp3.md`
 
 ### `type: "folder"`
 
@@ -143,12 +153,12 @@ extern im Host-Folder, der Server liest nur (kein Copy).
 | `type` ungültig | `invalid_type` |
 | Bestehende Site + `type` weicht ab | `type_immutable` |
 | `type: "files"` + `path` doppelt im Call | `duplicate_path` |
-| `type: "files"` + `delete: true` + `content` | `invalid_file_entry` |
-| `type: "files"` + `!delete` + kein `content` | `missing_content` |
+| `type: "files"` + `delete: true` + (`content` oder `src`) | `invalid_file_entry` |
+| `type: "files"` + `!delete` + kein `content` UND kein `src` | `missing_content` |
 | `type: "files"` + dekodierte File > 1 MB | `file_too_large` |
+| `type: "files"` + `payload` | `payload_not_allowed_for_files` |
 | `type: "folder"` ohne `path` | `path_required` |
 | `type: "a2ui"`/`schema-form` ohne `payload` | `payload_required` |
-| `type: "files"` + `payload` | `payload_not_allowed_for_files` |
 | `type != "files"` + `files[]` | `files_not_allowed_for_<type>` |
 | `mode: "replace"` + `files: []` | `empty_files_not_allowed` |
 
@@ -158,8 +168,8 @@ extern im Host-Folder, der Server liest nur (kein Copy).
 
 - `GET /<site>/<file>` → Datei serven (mit Subfolder-Pfaden: `css/style.css`)
 - `GET /<site>/` → Directory-Listing rekursiv (siehe `mvp2-directory-listing.md`)
-- `GET /<site>/delete?confirm=yes` → Site-Folder + Registry-Eintrag löschen
-- `GET /<site>/delete-file/<path>?confirm=yes` → File löschen (auch in Subfolders)
+- `GET /<site>/delete?confirm=yes` → Site-Folder + Registry-Eintrag löschen (MVP2)
+- `GET /<site>/delete-file/<path>?confirm=yes` → File löschen (auch in Subfolders, MVP2)
 
 ### `type: "folder"`
 
@@ -211,7 +221,9 @@ Eine HTML-Template, mit Mount-Script pro Type:
 
 - Mountet den A2UI-React-Renderer mit `SITE.payload.messages`
 - Spec: A2UI **v0.9.1** (current) — `https://a2ui.org/specification/v0.9.1-a2ui/`
-- Renderer: offizieller A2UI-React-Renderer (sofern verfügbar), sonst minimaler Wrapper
+- **Renderer:** offizieller React-Renderer aus
+  [a2ui-project/a2ui/tree/main/renderers/react](https://github.com/a2ui-project/a2ui/tree/main/renderers/react)
+  via CDN geladen
 
 ### JSON-Schema-Form Mount
 
@@ -285,10 +297,9 @@ Eine HTML-Template, mit Mount-Script pro Type:
 | `type_immutable` | Site existiert + `type` weicht ab |
 | `site_not_found` | `site_path` existiert nicht |
 | `duplicate_path` | gleicher `path` mehrfach in einem `deploy`-Call |
-| `invalid_file_entry` | `delete: true` + `content` gleichzeitig |
-| `missing_content` | File ohne `content` und ohne `delete: true` |
+| `invalid_file_entry` | `delete: true` + `content`/`src` gleichzeitig |
+| `missing_content` | File ohne `content`, ohne `src`, und ohne `delete: true` |
 | `file_too_large` | dekodierte File > 1 MB |
-| `invalid_data_url` | Data-URL kaputt / base64 ungültig |
 | `empty_files_not_allowed` | `replace`-Modus mit `files: []` |
 | `path_required` | `type: "folder"` ohne `path` |
 | `payload_required` | `type: "a2ui"`/`schema-form` ohne `payload` |
@@ -298,6 +309,11 @@ Eine HTML-Template, mit Mount-Script pro Type:
 | `files_not_allowed_for_schema_form` | `type: "schema-form"` mit `files[]` |
 | `submit_not_allowed` | `POST /<site>/submit` bei falschem `type` |
 | `invalid_json` | Submit-Body ist kein gültiges JSON |
+| `src_invalid_data_url` | (MVP3) Data-URL kaputt / base64 ungültig |
+| `src_unreachable` | (MVP3) HTTP-URL DNS/TCP-Fehler |
+| `src_timeout` | (MVP3) HTTP-URL Timeout |
+| `src_fetch_failed` | (MVP3) HTTP 4xx/5xx |
+| `src_file_too_large` | (MVP3) Stream > 1 MB |
 | `internal_error` | Unerwarteter Server-Fehler |
 
 ## Out of Scope (MVP4)
@@ -305,10 +321,11 @@ Eine HTML-Template, mit Mount-Script pro Type:
 - **Path-Validation** (`path_traversal`, Whitelist, Existenz-Checks) — Trust-Modell
 - HTTPS (→ MVP2)
 - Auto-Delete / Retention (→ MVP2)
-- `src`-Parameter pro File (→ MVP3, separate Idee)
 - WebSocket-Streaming für A2UI progressive rendering
 - Submission-TTL / Auto-Cleanup (kommt mit MVP2-Retention)
 - Submit-Webhooks
 - Custom Render-Themes
 - Auth auf Submit-Endpoint (LAN-only MVP4)
 - A2UI-Action-Callbacks (User-Interaktion zurück zum Agent) — für MVP4 nur Render
+
+> Versionierung: v1.0 = final; Änderungen → v1.1/v2.0-Bump mit Changelog oben.
