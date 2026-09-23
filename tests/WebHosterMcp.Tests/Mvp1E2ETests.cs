@@ -71,4 +71,48 @@ public sealed class Mvp1E2ETests : IDisposable
         var after = await _tools.GetSiteInfo("demo-001");
         Assert.Equal("site_not_found", after.error);
     }
+
+    [Fact]
+    public async Task TwoSites_RunInParallelWithoutConflict()
+    {
+        var deployA = _tools.Deploy(site_path: "site-a", files: new[]
+        {
+            new DeployToolFileEntry("index.html", content: "A")
+        });
+
+        var deployB = _tools.Deploy(site_path: "site-b", files: new[]
+        {
+            new DeployToolFileEntry("index.html", content: "B"),
+            new DeployToolFileEntry("assets/app.js", content: "console.log('b')")
+        });
+
+        await Task.WhenAll(deployA, deployB);
+
+        var sites = await _tools.ListSites();
+        Assert.Equal(2, sites.Count);
+        Assert.Contains(sites, s => s.site_path == "site-a" && s.file_count == 1);
+        Assert.Contains(sites, s => s.site_path == "site-b" && s.file_count == 2);
+    }
+
+    [Fact]
+    public async Task Persistence_SurvivesManagerRestartSimulation()
+    {
+        await _tools.Deploy(site_path: "persist-001", files: new[]
+        {
+            new DeployToolFileEntry("index.html", content: "Persist")
+        });
+
+        // Restart-Simulation: neue Registry/Manager-Instanzen auf derselben Disk
+        var reloadedRegistry = new SiteRegistry(Path.Combine(_sitesRoot, "registry.json"));
+        var reloadedManager = new SiteManager(
+            reloadedRegistry,
+            new SitesOptions { SitesRoot = _sitesRoot, MaxFileSizeBytes = 1_048_576 },
+            new HostOptions { Ip = "127.0.0.1", Port = 3000 });
+        var reloadedTools = new SiteTools(reloadedManager);
+
+        var info = await reloadedTools.GetSiteInfo("persist-001");
+        Assert.Null(info.error);
+        Assert.Equal("persist-001", info.site_path);
+        Assert.True(File.Exists(Path.Combine(_sitesRoot, "persist-001", "index.html")));
+    }
 }
