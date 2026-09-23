@@ -1,9 +1,10 @@
 # MVP2 — HTTPS + Retention + HTTP-Delete-Endpoints
 
-Stand: 2026-09-23 · v1.1 (lock)
+Stand: 2026-09-23 · v1.2 (lock)
 
 ## Changelog
 
+- **v1.2 (2026-09-23):** HTTP-Delete-Endpoints von GET+Confirm auf **DELETE-Methode** umgestellt (kein Confirm-Pattern, kein `/file/`-Segment); Browser-UI nutzt JS-Buttons mit `fetch(..., {method: 'DELETE'})`.
 - **v1.1 (2026-09-23):** Self-Signed-Cert mit SAN-Entries (DNS hostname + IP); Cert-Filename-Sanitization (Path-invalid-chars → `-`); Lock-Semantik-Footer.
 - **v1.0 (2026-09-23):** Initiale Spec (HTTPS + Retention + HTTP-Delete-Endpoints).
 
@@ -13,7 +14,7 @@ MVP2 erweitert MVP1 um drei Features:
 
 - **HTTPS-Endpoint** parallel zu HTTP (PFX-Cert mit Self-Signed Fallback)
 - **Retention / Auto-Delete** per Site (TTL seit `updated_at`, Background-Timer, Hard Delete; Default 7 Tage, Interval 1h)
-- **HTTP-Delete-Endpoints** mit Confirm-Pattern für Browser-User (`[delete]`-Links in Sites-Index und File-Listing)
+- **HTTP-Delete-Endpoints** mit **DELETE-Methode** (kein Confirm-Pattern, kein Prefetch-Risiko) + JS-Buttons in Listings für Browser-User
 
 Referenzen: `specs/mvp1.md` (Basis), `specs/mvp4-render-types.md` (Render-Types für Type-bezogenes Verhalten).
 
@@ -125,76 +126,99 @@ Loggt pro Expiry: `Site expired: <site_path> (ttl=<n>s, age=<age>s)`.
 | `schema-form` | `rm -rf <SitesRoot>/<site>/` (enthält `payload.json` + alle `<submission-id>.json`) + Registry weg |
 | `folder`      | **Nur** Registry weg — Host-Folder bleibt unangetastet |
 
-## 4. HTTP-Delete-Endpoints
+## 4. HTTP-Delete-Endpoints (DELETE-Methode)
 
-### 4.1 Confirm-Pattern (verhindert Link-Prefetch-Loeschen)
+### 4.1 DELETE auf Resource-URL
 
-```
-GET /<site>/delete                → Bestätigungs-Seite (HTML, 200)
-GET /<site>/delete?confirm=yes    → Loeschen, 302 Redirect zu /
-GET /<site>/delete?confirm=no     → Cancel, 302 Redirect zu /
-```
-
-Analog für File-Delete:
+DELETE auf der Resource-URL — direkt destruktiv, **kein** Confirm-Pattern, **kein** `/file/`-Segment:
 
 ```
-GET /<site>/delete-file/<path>             → Bestätigungs-Seite (HTML, 200)
-GET /<site>/delete-file/<path>?confirm=yes → Loeschen, 302 Redirect zu /<site>/
-GET /<site>/delete-file/<path>?confirm=no  → Cancel, 302 Redirect zu /<site>/
+DELETE /<site>             → Site löschen, 302 → /
+DELETE /<site>/<file>      → File löschen, 302 → /<site>/
 ```
 
-URL-Encoding: `path` im URL ist URL-encoded; Server decodiert.
+**Begründung:**
 
-### 4.2 Site-Delete (`/delete`)
+- DELETE ist der HTTP-Spec-konforme Verb für Destroy-Operationen
+- DELETE wird **nicht** von Browsern prefetched (im Gegensatz zu GET)
+- **Ein** Round-Trip statt zwei (kein Confirm-Page nötig)
+- RESTful + konsistent mit anderen HTTP-Tools (curl, postman)
+- Kein `?confirm=yes`-Param-Clutter in URLs
 
-Verfügbar für **alle Render-Types**.
+### 4.2 Render-Type-spezifisches Verhalten
 
-| Render-Type | Verhalten nach `confirm=yes` |
-|-------------|-------------------------------|
-| `files`       | Hard-Delete (siehe 3.4) |
-| `folder`      | Nur Registry weg (Host-Folder bleibt) |
-| `a2ui`       | Hard-Delete |
-| `schema-form` | Hard-Delete inkl. aller `<submission-id>.json` |
+| Render-Type | `DELETE /<site>` | `DELETE /<site>/<file>` |
+|-------------|------------------|------------------------|
+| `files`       | Hard-Delete (Site-Folder + Registry) | File löschen |
+| `folder`      | **Nur Registry** weg (Host-Folder bleibt!) | **404** (kein File-Delete bei folder, per MVP4) |
+| `a2ui`       | Hard-Delete (payload.json + Registry) | **404** (kein File-Listing) |
+| `schema-form` | Hard-Delete (payload.json + Submissions + Registry) | **404** (kein File-Listing) |
 
-### 4.3 File-Delete (`/delete-file/<path>`)
+### 4.3 Browser-UI (JS-Buttons mit fetch + DELETE)
 
-Verfügbar **nur** für `type: files`. Für andere Types → `404`:
-
-| Render-Type | File-Delete-Endpoint |
-|-------------|----------------------|
-| `files`       | aktiv |
-| `folder`      | `404` (kein File-Delete bei folder, per MVP4) |
-| `a2ui`       | `404` (kein File-Listing, daher kein Delete-Link) |
-| `schema-form` | `404` (kein File-Listing) |
-
-Bei `type: files` löscht das Endpoint das File via `deploy(mode: merge, files: [{path, delete: true}])`-Semantik (oder direktem File.delete + Registry-Update).
-
-### 4.4 Bestätigungs-Seiten
-
-Einfache HTML-Seiten, inline CSS (300-400 Byte). Inhalte:
-
-**`/<site>/delete`:**
+Plain-HTML-Links können DELETE nicht direkt aufrufen. Browser-UI
+nutzt JavaScript-Buttons mit `fetch`:
 
 ```html
-<h1>Site &quot;<site_path>&quot; löschen?</h1>
-<p>Alle Files und der Registry-Eintrag werden entfernt.
-   Bei <code>type: folder</code> bleibt der referenzierte Host-Folder erhalten.</p>
-<a href="/<site>/delete?confirm=yes">Ja, löschen</a>
-<a href="/">Abbrechen</a>
+<!-- Sites-Index: Delete-Button pro Site -->
+<li>
+  <a href="/demo-001/">demo-001</a>
+  <span>files · 3 Dateien</span>
+  <span>2026-09-22 16:50</span>
+  <button data-delete-site="demo-001" class="delete-btn">Delete</button>
+</li>
+
+<!-- Site-Listing (files/folder): Delete-Button pro File -->
+<li>
+  <a href="/demo-001/index.html">index.html</a>
+  <span>2026-09-22 16:50</span>
+  <button data-delete-file="index.html" data-site="demo-001" class="delete-btn">Delete</button>
+</li>
+
+<script>
+document.querySelectorAll('[data-delete-site]').forEach(btn => {
+  btn.onclick = async () => {
+    const site = btn.dataset.deleteSite;
+    if (!confirm(`Site "${site}" wirklich löschen?`)) return;
+    const res = await fetch('/' + site, {method: 'DELETE'});
+    if (res.ok) location.href = '/';
+    else alert('Fehler: ' + res.status);
+  };
+});
+
+document.querySelectorAll('[data-delete-file]').forEach(btn => {
+  btn.onclick = async () => {
+    const site = btn.dataset.site;
+    const filePath = btn.dataset.deleteFile;
+    if (!site) { alert('Site-Kontext fehlt'); return; }
+    if (!confirm(`File "${filePath}" wirklich löschen?`)) return;
+    const res = await fetch(
+      '/' + site + '/' + filePath,
+      {method: 'DELETE'}
+    );
+    if (res.ok) location.href = '/' + site + '/';
+    else alert('Fehler: ' + res.status);
+  };
+});
+</script>
 ```
 
-**`/<site>/delete-file/<path>`:**
+Native `confirm()`-Dialog ersetzt die Server-Confirm-Page. UX ist
+**1-Klick** statt 2-Klick.
 
-```html
-<h1>File &quot;<path>&quot; löschen?</h1>
-<p>Aus Site &quot;<site_path>&quot; entfernen.</p>
-<a href="/<site>/delete-file/<url-encoded-path>?confirm=yes">Ja, löschen</a>
-<a href="/<site>/">Abbrechen</a>
-```
+### 4.4 CSP / Security-Hinweise
 
-HTML-Escaping aller Pfade (XSS-Schutz, identisch zum Directory-Listing).
+DELETE erfordert JS im Browser. Bei deaktiviertem JS:
+- Delete-Buttons nicht funktional (graceful degradation)
+- Sites trotzdem über `delete_site`-Tool löschbar (MCP-Pfad)
 
-## 5. Delete-Links in Listings
+### 4.5 MCP-Tool `delete_site` — unverändert
+
+KI benutzt weiterhin `delete_site` über MCP. Das HTTP-DELETE-Endpoint
+ist **nur für die Browser-UI** (Directory-Listings). Beide Pfade führen
+zur gleichen `SiteManager.DeleteSite()`-Logik im Code.
+
+## 5. Delete-Buttons in Listings
 
 Sites-Index (`GET /`, siehe `specs/mvp2-directory-listing.md`):
 
@@ -203,7 +227,7 @@ Sites-Index (`GET /`, siehe `specs/mvp2-directory-listing.md`):
   <a href="/demo-001/">demo-001</a>
   <span>files · 3 Dateien</span>
   <span>2026-09-22 16:50</span>
-  <a href="/demo-001/delete">[delete]</a>
+  <button data-delete-site="demo-001" class="delete-btn">Delete</button>
 </li>
 ```
 
@@ -213,11 +237,15 @@ Site-Listing (`GET /<site>/`, nur type:files und type:folder):
 <li>
   <a href="/demo-001/index.html">index.html</a>
   <span>2026-09-22 16:50</span>
-  <a href="/demo-001/delete-file/index.html">[delete]</a>
+  <button data-delete-file="index.html" data-site="demo-001" class="delete-btn">Delete</button>
 </li>
 ```
 
-Für `type: a2ui` und `type: schema-form` werden **keine** Delete-Links im File-Bereich gerendert (kein File-Listing), aber Site-Delete-Link ist im Sites-Index vorhanden.
+JS-Handler (siehe §4.3) macht das eigentliche DELETE.
+
+Für `type: a2ui` und `type: schema-form` werden **keine** Delete-Buttons
+im File-Bereich gerendert (kein File-Listing), aber Site-Delete-Button
+ist im Sites-Index vorhanden.
 
 ## 6. Configuration (`appsettings.json`)
 
@@ -339,21 +367,20 @@ https://<ip>:3443/<site>/<file>     → für type:a2ui/schema-form: 404
 
 Self-Signed-Cert → Browser-Warnung beim ersten Besuch.
 
-### 9.2 Delete-Endpoints
+### 9.2 Delete-Endpoints (DELETE-Methode)
 
 ```
-GET  /<site>/delete                          → alle Types (Bestätigung)
-GET  /<site>/delete?confirm=yes             → alle Types (Loeschen)
-GET  /<site>/delete-file/<path>             → nur type:files (Bestätigung)
-GET  /<site>/delete-file/<path>?confirm=yes  → nur type:files (Loeschen)
+DELETE /<site>                → Site löschen, 302 → /
+DELETE /<site>/<file>         → File löschen, 302 → /<site>/
 ```
 
-Alle Endpoints liefern HTML (Bestätigung oder 302 nach Action).
+DELETE wird **nicht** von Browsern prefetched — kein Confirm-Pattern nötig.
+Browser-UI nutzt JS-Buttons mit `fetch(..., {method: 'DELETE'})` (siehe §4.3).
 
 ### 9.3 Bestehende Routes (unverändert zu MVP1 + MVP4)
 
-- `GET /` → Sites-Index (jetzt mit `[delete]`-Links pro Site und Type-Label)
-- `GET /<site>/` → Site-Listing (jetzt mit `[delete]`-Links pro File, nur type:files/folder)
+- `GET /` → Sites-Index (mit JS-Delete-Buttons pro Site und Type-Label)
+- `GET /<site>/` → Site-Listing (mit JS-Delete-Buttons pro File, nur type:files/folder)
 - `GET /<site>/<file>` → Static File Serving
 - `GET /<site>/submit` → nur type:schema-form (MVP4)
 - `GET /<site>/<unknown>` → 404
@@ -362,15 +389,14 @@ Alle Endpoints liefern HTML (Bestätigung oder 302 nach Action).
 
 | Code | Wann |
 |------|------|
-| `site_not_found` | Delete-Endpoint für nicht-existente Site |
-| `path_not_found` | File-Delete für nicht-existente File |
-| `delete_not_allowed` | File-Delete-Endpoint bei type ≠ files |
+| `site_not_found` | DELETE für nicht-existente Site |
+| `path_not_found` | DELETE /<site>/<file> für nicht-existente File |
 | `cert_load_failed` | PFX konnte nicht geladen werden |
 | `self_signed_failed` | Self-Signed Cert konnte nicht generiert werden |
 | `https_startup_failed` | HTTPS-Listener konnte nicht starten |
 | `internal_error` | Unerwarteter Server-Fehler |
 
-Hinweis: `path_traversal` wird **nicht** mehr ausgelöst (Trust-Modell, etabliert in MVP4).
+Hinweis: `path_traversal` wird **nicht** mehr ausgelöst (Trust-Modell, etabliert in MVP4). DELETE für nicht erlaubte Render-Types (z. B. `/<site>/<file>` bei folder/a2ui/schema-form) → **404** vom Kestrel-Router (kein Endpoint registriert), nicht ein typisierter Error.
 
 ## 11. Out of Scope (MVP2)
 
@@ -386,5 +412,6 @@ Hinweis: `path_traversal` wird **nicht** mehr ausgelöst (Trust-Modell, etablier
 - HSTS-Header
 - `appsettings.Development.json`-Trennung (existiert noch nicht)
 - Retention per User / per Folder-Target
+- Confirm-Page für DELETE (entfernt in v1.2 — Browser-UI nutzt native `confirm()`)
 
 > Versionierung: v1.0 = final; Änderungen → v1.1/v2.0-Bump mit Changelog oben.

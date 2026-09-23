@@ -1,9 +1,10 @@
 # MVP2 — Directory Listing
 
-Stand: 2026-09-23 · v1.2 (lock)
+Stand: 2026-09-23 · v1.3 (lock)
 
 ## Changelog
 
+- **v1.3 (2026-09-23):** Hinweis auf Delete-Buttons via JS in MVP2 §4/§5 (statt plain GET-Links); kein `?confirm=yes`-Pattern mehr.
 - **v1.2 (2026-09-23):** Lock-Semantik-Footer.
 - **v1.1 (2026-09-22):** Type-aware Verhalten — kein Listing bei `a2ui`/`schema-form`.
 - **v1.0 (2026-09-22):** Initiale Spec.
@@ -150,6 +151,7 @@ Identische Struktur, aber Files kommen aus `<host-path>/` statt
 - Hidden-Files-Logik (`.`-Präfix)
 - Sort-Optionen (Datum, Größe)
 - i18n (deutsch / englisch)
-- File-Delete-Links im Listing (kommt mit MVP2 HTTP-Endpoints, separater Patch)
+
+**Delete-Buttons (Browser-UI):** werden in MVP2 §4/§5 definiert (JS-Buttons mit `fetch` + DELETE, keine GET-Confirm-Links mehr).
 
 > Versionierung: v1.0 = final; Änderungen → v1.1/v2.0-Bump mit Changelog oben.

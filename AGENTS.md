@@ -17,8 +17,8 @@ MIT — siehe [LICENSE](./LICENSE)
 Stand: 2026-09-23 (16:14)
 
 - [x] MVP1-Spec v1.2: `specs/mvp1.md` — `type: "files"`-Pfad, 4 Tools, `content` plain-only, `src`/Data-URL/MVP3-verwiesen, Retention/expires_at dokumentiert, Lock-Semantik-Footer
-- [x] MVP2-Spec v1.1: `specs/mvp2.md` — HTTPS (Beides, separate Port, Self-Signed inkl. SAN) + Retention (7d Default, 1h Interval, Background-Timer, Hard Delete) + HTTP-Delete-Endpoints mit Confirm-Pattern + Delete-Links + Lock-Semantik-Footer
-- [x] MVP2-Listing v1.2: `specs/mvp2-directory-listing.md` — Lock-Semantik-Footer
+- [x] MVP2-Spec v1.2: `specs/mvp2.md` — HTTPS (Beides, separate Port, Self-Signed inkl. SAN) + Retention (7d Default, 1h Interval, Background-Timer, Hard Delete) + **HTTP-Delete-Endpoints mit DELETE-Methode (kein `/file/`, kein Confirm-Pattern)** + Delete-Buttons in Listings + Lock-Semantik-Footer
+- [x] MVP2-Listing v1.3: `specs/mvp2-directory-listing.md` — Lock-Semantik-Footer + Hinweis auf Delete-Buttons in MVP2 §4/§5
 - [x] MVP3-Spec v1.0: `specs/mvp3.md` — per-File `src` mit Data URL / lokaler Pfad / HTTP-URL, Trust-Modell, Lock-Semantik-Footer
 - [x] MVP4 Render-Types v2.1: `specs/mvp4-render-types.md` — A2UI via offiziellen React-Renderer (`renderers/react/`), Lock-Semantik-Footer
 - [x] GitHub-Repo `schirkan/web-hoster-mcp` ist **public**
@@ -109,8 +109,8 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 | Spec | Status |
 |------|--------|
 | `mvp1.md` | ✅ v1.2 locked |
-| `mvp2.md` | ✅ v1.1 locked |
-| `mvp2-directory-listing.md` | ✅ v1.2 locked |
+| `mvp2.md` | ✅ v1.2 locked |
+| `mvp2-directory-listing.md` | ✅ v1.3 locked |
 | `mvp3.md` | ✅ v1.0 locked |
 | `mvp4-render-types.md` | ✅ v2.1 locked |
 
