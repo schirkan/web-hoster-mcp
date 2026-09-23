@@ -16,6 +16,7 @@ public class SiteManager
     private readonly SiteRegistry _registry;
     private readonly SitesOptions _sitesOptions;
     private readonly HostOptions _hostOptions;
+    private readonly RetentionOptions _retentionOptions;
     private readonly string _sitesRoot;
 
     private static readonly Regex SitePathRegex = new(@"^[a-z0-9-]{3,32}$", RegexOptions.Compiled);
@@ -48,11 +49,13 @@ public class SiteManager
     public SiteManager(
         SiteRegistry registry,
         SitesOptions sitesOptions,
-        HostOptions hostOptions)
+        HostOptions hostOptions,
+        RetentionOptions? retentionOptions = null)
     {
         _registry = registry;
         _sitesOptions = sitesOptions;
         _hostOptions = hostOptions;
+        _retentionOptions = retentionOptions ?? new RetentionOptions();
         _sitesRoot = Path.GetFullPath(sitesOptions.SitesRoot);
         Directory.CreateDirectory(_sitesRoot);
     }
@@ -102,7 +105,9 @@ public class SiteManager
         }
 
         // --- Retention ---
-        var retentionSeconds = request.RetentionSeconds ?? existing?.RetentionSeconds ?? 0;
+        var retentionSeconds = request.RetentionSeconds
+                               ?? existing?.RetentionSeconds
+                               ?? _retentionOptions.DefaultTtlSeconds;
 
         // --- Registry Update ---
         var entry = new SiteEntry
@@ -140,14 +145,62 @@ public class SiteManager
     /// <summary>Löscht eine Site (MVP1 `delete_site`). Entfernt Registry-Eintrag UND Site-Folder.</summary>
     public async Task<bool> DeleteAsync(string sitePath, CancellationToken ct = default)
     {
-        await _registry.LoadAsync(ct);
+        var entry = await _registry.ReadAsync(sitePath, ct);
+        if (entry is null)
+        {
+            return false;
+        }
+
         var deleted = await _registry.DeleteAsync(sitePath, ct);
         if (!deleted) return false;
+
+        // folder-Type: nur Registry-Eintrag entfernen, Host-Folder unangetastet lassen
+        if (string.Equals(entry.Type, "folder", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
         var siteFolder = Path.Combine(_sitesRoot, sitePath);
         if (Directory.Exists(siteFolder))
         {
             Directory.Delete(siteFolder, recursive: true);
         }
+        return true;
+    }
+
+    public async Task<bool?> DeleteFileAsync(string sitePath, string filePath, CancellationToken ct = default)
+    {
+        var entry = await _registry.ReadAsync(sitePath, ct);
+        if (entry is null)
+        {
+            return null;
+        }
+
+        if (!string.Equals(entry.Type, "files", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var normalized = filePath.Replace('/', Path.DirectorySeparatorChar);
+        if (normalized.Contains("..", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var siteFolder = Path.GetFullPath(Path.Combine(_sitesRoot, sitePath));
+        var physicalPath = Path.GetFullPath(Path.Combine(siteFolder, normalized));
+
+        if (!physicalPath.StartsWith(siteFolder, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!File.Exists(physicalPath))
+        {
+            return false;
+        }
+
+        File.Delete(physicalPath);
         return true;
     }
 

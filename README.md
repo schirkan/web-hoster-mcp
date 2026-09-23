@@ -34,7 +34,7 @@ Erweiterungen (via `src`-Parameter, Hosting-Typen, HTTPS, Retention):
 
 **Lock-Semantik:** v1.0 = final; Änderungen führen zu v1.1/v2.0-Bump mit Changelog-Eintrag oben im jeweiligen Spec.
 
-**Implementierung:** MVP1 umgesetzt. Weiterer Ausbau über MVP2+.
+**Implementierung:** MVP1 + MVP2 umgesetzt. Weiterer Ausbau über MVP3+.
 
 ---
 
@@ -76,7 +76,7 @@ dotnet run --project src/WebHosterMcp.Host
 # → MCP-Endpoint via stdio
 ```
 
-*(MVP1 ist implementiert; HTTPS/Retention/weitere Hosting-Typen folgen gemäß Specs.)*
+*(MVP1 + MVP2 sind implementiert; weitere Hosting-Typen und `src`-Ausbau folgen gemäß Specs.)*
 
 ---
 

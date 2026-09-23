@@ -1,8 +1,8 @@
 namespace WebHosterMcp.Core;
 
 /// <summary>
-/// Host-Konfiguration: HTTP/HTTPS-Listener, SitesRoot, Retention, Sites-Limits.
-/// Gebunden aus `appsettings.json` Sektion `Host` + `Sites`.
+/// Host-Konfiguration: HTTP/HTTPS-Listener.
+/// Gebunden aus `appsettings.json` Sektion `Host`.
 /// </summary>
 public class HostOptions
 {
@@ -17,18 +17,19 @@ public class HostOptions
 
     /// <summary>HTTPS-Port (Default 3443).</summary>
     public int HttpsPort { get; set; } = 3443;
+}
 
+/// <summary>HTTPS-Cert Optionen (MVP2 §2).</summary>
+public class HttpsOptions
+{
     /// <summary>Optionaler PFX-Pfad. null = kein PFX, Self-Signed Fallback.</summary>
-    public string? HttpsCertPath { get; set; }
+    public string? CertPath { get; set; }
 
     /// <summary>PFX-Password.</summary>
-    public string? HttpsCertPassword { get; set; }
+    public string? CertPassword { get; set; }
 
-    /// <summary>Self-Signed Cert Optionen (Default: aktiv, RSA 2048 + SAN).</summary>
+    /// <summary>Self-Signed Cert Optionen.</summary>
     public HttpsSelfSignedOptions SelfSigned { get; set; } = new();
-
-    /// <summary>Retention/Auto-Delete Optionen.</summary>
-    public RetentionOptions Retention { get; set; } = new();
 }
 
 /// <summary>Self-Signed Cert Generation (MVP2 §2.2).</summary>

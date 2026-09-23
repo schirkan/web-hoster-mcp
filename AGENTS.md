@@ -1,7 +1,7 @@
 # Web Hoster MCP — AGENTS.md
 
 Projekt: **Web Hoster MCP**
-Status: MVP1 implementiert
+Status: MVP2 implementiert
 Letztes Update: 2026-09-23
 
 ---
@@ -14,7 +14,7 @@ MIT — siehe [LICENSE](./LICENSE)
 
 ## Current Status
 
-Stand: 2026-09-23 (20:45)
+Stand: 2026-09-23 (21:45)
 
 - [x] MVP1-Spec v1.3: `specs/mvp1.md` — `type: "files"`-Pfad, 4 Tools, `content` plain-only, **Path-Validation (`..`/MAX_PATH)**, **timestamps lokal**, **replace+empty deletes all**, Cross-Ref auf MVP3 für `src`, Lock-Semantik-Footer
 - [x] MVP2-Spec v1.3: `specs/mvp2.md` — HTTPS (Beides, SAN, Self-Signed Fallback) + Retention (7d Default, 1h Interval mit **Range-Validation**, Background-Timer, Hard Delete) + HTTP-Delete-Endpoints mit **DELETE-Methode** + **`Host:UseHttps=false` → HTTPS off** + **`folder`-Retention: Registry weg, Host-Folder bleibt, Re-Deploy setzt `path` + `updated_at`** + Lock-Semantik-Footer
@@ -29,6 +29,8 @@ Stand: 2026-09-23 (20:45)
 - [x] Workboard `web-hoster-mcp` aktiv gepflegt (26 Karten, **8 done**)
 - [x] MVP1 vollständig implementiert (Karten 1-7 = done)
 - [x] Neu in Code: `SiteTools` (`deploy`, `list_sites`, `get_site_info`, `delete_site`), Static File Serving Route, E2E-Tests
+- [x] MVP2 in Code implementiert: HTTPS-Listener (PFX/Self-Signed), Retention-Background-Service, HTTP-DELETE-Endpunkte + Delete-Buttons in Listings
+- [x] Tests erweitert: `54/54` grün (inkl. MVP2 Core- und SiteManager-Checks)
 - [x] CI Workflow entfernt (gewollt) — nur Tag-basierter Release-Workflow aktiv
 - [x] Release Workflow angepasst: `.github/workflows/release.yml` mit **self-contained + trimmed publish** (`win-x64`)
 

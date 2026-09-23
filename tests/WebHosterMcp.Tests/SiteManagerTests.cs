@@ -232,6 +232,25 @@ public class SiteManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task DeployAsync_RetentionSeconds_DefaultFromOptions_WhenOmittedAndNew()
+    {
+        var manager = new SiteManager(
+            _registry,
+            new SitesOptions { SitesRoot = _sitesRoot, MaxFileSizeBytes = 1_048_576 },
+            new HostOptions { Ip = "0.0.0.0", Port = 3000 },
+            new RetentionOptions { DefaultTtlSeconds = 1234, CheckIntervalSeconds = 60 });
+
+        await manager.DeployAsync(new DeployRequest(
+            SitePath: "demo-default-retention",
+            Files: new[] { new FileEntry("x.txt", "x") }
+        ));
+
+        var entry = await manager.GetAsync("demo-default-retention");
+        Assert.NotNull(entry);
+        Assert.Equal(1234, entry!.RetentionSeconds);
+    }
+
+    [Fact]
     public async Task DeployAsync_GeneratedSitePath_Is8Chars()
     {
         var result = await _manager.DeployAsync(new DeployRequest(SitePath: null));
@@ -309,6 +328,44 @@ public class SiteManagerTests : IDisposable
     public async Task DeleteAsync_NonExistentSite_ReturnsFalse()
     {
         var deleted = await _manager.DeleteAsync("never-existed");
+        Assert.False(deleted);
+    }
+
+    [Fact]
+    public async Task DeleteFileAsync_ExistingFile_DeletesOnlyFile()
+    {
+        await _manager.DeployAsync(new DeployRequest(
+            SitePath: "demo",
+            Files: new[]
+            {
+                new FileEntry("keep.txt", "keep"),
+                new FileEntry("sub/delete.txt", "delete")
+            }
+        ));
+
+        var deleted = await _manager.DeleteFileAsync("demo", "sub/delete.txt");
+
+        Assert.True(deleted);
+        Assert.True(File.Exists(Path.Combine(_sitesRoot, "demo", "keep.txt")));
+        Assert.False(File.Exists(Path.Combine(_sitesRoot, "demo", "sub", "delete.txt")));
+    }
+
+    [Fact]
+    public async Task DeleteFileAsync_UnknownSite_ReturnsNull()
+    {
+        var deleted = await _manager.DeleteFileAsync("never", "file.txt");
+        Assert.Null(deleted);
+    }
+
+    [Fact]
+    public async Task DeleteFileAsync_PathNotFound_ReturnsFalse()
+    {
+        await _manager.DeployAsync(new DeployRequest(
+            SitePath: "demo",
+            Files: new[] { new FileEntry("index.html", "x") }
+        ));
+
+        var deleted = await _manager.DeleteFileAsync("demo", "missing.txt");
         Assert.False(deleted);
     }
 
