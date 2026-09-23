@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore WebHosterMcp.sln
+
+      - name: Build
+        run: dotnet build WebHosterMcp.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test WebHosterMcp.sln --configuration Release --no-build --verbosity normal
+
+      - name: Publish self-contained (win-x64)
+        run: dotnet publish src/WebHosterMcp.Host/WebHosterMcp.Host.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false --output out/WebHosterMcp.Host-win-x64
+
+      - name: Create release zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path out -Force | Out-Null
+          $zipPath = "out/WebHosterMcp.Host-${{ github.ref_name }}-win-x64.zip"
+          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+          Compress-Archive -Path out/WebHosterMcp.Host-win-x64/* -DestinationPath $zipPath
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WebHosterMcp.Host-${{ github.ref_name }}-win-x64
+          path: out/WebHosterMcp.Host-${{ github.ref_name }}-win-x64.zip
+
+      - name: Create or update GitHub Release
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $zip = "out/WebHosterMcp.Host-${{ github.ref_name }}-win-x64.zip"
+
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag $zip --title $tag --notes "Automated release for $tag"
+          }
+          else {
+            gh release upload $tag $zip --clobber
+          }

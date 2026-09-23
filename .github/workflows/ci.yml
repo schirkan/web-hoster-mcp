@@ -29,10 +29,10 @@ jobs:
         run: dotnet test WebHosterMcp.sln --configuration Release --no-build --verbosity normal
 
       - name: Publish Host Artifact
-        run: dotnet publish src/WebHosterMcp.Host/WebHosterMcp.Host.csproj --configuration Release --no-build --output out/WebHosterMcp.Host
+        run: dotnet publish src/WebHosterMcp.Host/WebHosterMcp.Host.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false --output out/WebHosterMcp.Host-win-x64
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: WebHosterMcp.Host-win-x64
-          path: out/WebHosterMcp.Host
+          path: out/WebHosterMcp.Host-win-x64

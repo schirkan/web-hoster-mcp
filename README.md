@@ -34,7 +34,28 @@ Erweiterungen (via `src`-Parameter, Render-Typen, HTTPS, Retention):
 
 **Lock-Semantik:** v1.0 = final; Änderungen führen zu v1.1/v2.0-Bump mit Changelog-Eintrag oben im jeweiligen Spec.
 
-**Implementierung:** ausstehend. Sub-Agent-Tracking in [`AGENTS.md`](./AGENTS.md).
+**Implementierung:** MVP1 umgesetzt. Weiterer Ausbau über MVP2+.
+
+---
+
+## CI/CD
+
+- **CI:** `.github/workflows/ci.yml`
+  - Trigger: Push/PR auf `main`
+  - Schritte: Restore, Build, Tests, **self-contained Publish (`win-x64`)**
+  - Artefakt: `WebHosterMcp.Host-win-x64`
+
+- **Release:** `.github/workflows/release.yml`
+  - Trigger: Tag-Push `v*` (z. B. `v1.0.0`)
+  - Schritte: Restore, Build, Tests, self-contained Publish (`win-x64`), ZIP, GitHub Release erstellen/aktualisieren
+  - Release-Asset: `WebHosterMcp.Host-<tag>-win-x64.zip`
+
+Beispiel Tag-Release:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
 ---
 
@@ -60,7 +81,7 @@ dotnet run --project src/WebHosterMcp.Host
 # → MCP-Endpoint via stdio
 ```
 
-*(Implementation ausstehend)*
+*(MVP1 ist implementiert; HTTPS/Retention/Render-Types folgen gemäß Specs.)*
 
 ---
 
@@ -68,6 +89,9 @@ dotnet run --project src/WebHosterMcp.Host
 
 ```
 web-hoster-mcp/
+├── .github/workflows/
+│   ├── ci.yml                           # CI (build/test + self-contained artifact)
+│   └── release.yml                      # Tag-Release (v*) + GitHub Release Asset
 ├── LICENSE                              # MIT
 ├── README.md                            # This file
 ├── AGENTS.md                            # Sub-Agent Context
