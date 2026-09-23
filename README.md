@@ -40,14 +40,9 @@ Erweiterungen (via `src`-Parameter, Hosting-Typen, HTTPS, Retention):
 
 ## CI/CD
 
-- **CI:** `.github/workflows/ci.yml`
-  - Trigger: Push/PR auf `main`
-  - Schritte: Restore, Build, Tests, **self-contained Publish (`win-x64`)**
-  - Artefakt: `WebHosterMcp.Host-win-x64`
-
 - **Release:** `.github/workflows/release.yml`
   - Trigger: Tag-Push `v*` (z. B. `v1.0.0`)
-  - Schritte: Restore, Build, Tests, self-contained Publish (`win-x64`), ZIP, GitHub Release erstellen/aktualisieren
+  - Schritte: Restore, Build, Tests, self-contained Publish (`win-x64`, **trimmed**), ZIP, GitHub Release erstellen/aktualisieren
   - Release-Asset: `WebHosterMcp.Host-<tag>-win-x64.zip`
 
 Beispiel Tag-Release:
@@ -90,7 +85,6 @@ dotnet run --project src/WebHosterMcp.Host
 ```
 web-hoster-mcp/
 ├── .github/workflows/
-│   ├── ci.yml                           # CI (build/test + self-contained artifact)
 │   └── release.yml                      # Tag-Release (v*) + GitHub Release Asset
 ├── LICENSE                              # MIT
 ├── README.md                            # This file
