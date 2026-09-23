@@ -41,12 +41,6 @@ jobs:
           if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
           Compress-Archive -Path out/WebHosterMcp.Host-win-x64/* -DestinationPath $zipPath
 
-      - name: Upload workflow artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: WebHosterMcp.Host-${{ github.ref_name }}-win-x64
-          path: out/WebHosterMcp.Host-${{ github.ref_name }}-win-x64.zip
-
       - name: Create or update GitHub Release
         shell: pwsh
         env:

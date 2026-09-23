@@ -22,8 +22,7 @@ Tag-basierte Releases auf GitHub mit self-contained + trimmed Windows-Artefakt.
   3. Restore, Build, Test (Release)
   4. Self-contained Publish (`win-x64`, `PublishTrimmed=true`)
   5. ZIP erzeugen: `WebHosterMcp.Host-<tag>-win-x64.zip`
-  6. Workflow Artifact Upload
-  7. GitHub Release erstellen/aktualisieren und ZIP anhängen
+  6. GitHub Release erstellen/aktualisieren und ZIP anhängen
 
 ---
 

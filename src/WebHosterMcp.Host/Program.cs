@@ -35,7 +35,7 @@ builder.Services.AddSingleton(sp =>
 builder.Services
     .AddMcpServer()
     .WithStdioServerTransport()
-    .WithToolsFromAssembly();
+    .WithTools<WebHosterMcp.Host.SiteTools>();
 
 var app = builder.Build();
 

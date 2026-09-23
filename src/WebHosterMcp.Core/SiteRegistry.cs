@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace WebHosterMcp.Core;
@@ -36,13 +35,6 @@ public class SiteRegistry
     private readonly string _path;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private Registry _registry = new();
-
-    private static readonly JsonSerializerOptions _jsonOpts = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    };
 
     public SiteRegistry(string path)
     {
@@ -163,7 +155,10 @@ public class SiteRegistry
             return;
         }
         await using var stream = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        _registry = (await JsonSerializer.DeserializeAsync<Registry>(stream, _jsonOpts, ct)) ?? new Registry();
+        _registry = (await System.Text.Json.JsonSerializer.DeserializeAsync(
+            stream,
+            SiteRegistryJsonContext.Default.Registry,
+            ct)) ?? new Registry();
     }
 
     private async Task SaveToDiskAsync(CancellationToken ct)
@@ -171,7 +166,11 @@ public class SiteRegistry
         var tmpPath = _path + ".tmp";
         await using (var stream = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None))
         {
-            await JsonSerializer.SerializeAsync(stream, _registry, _jsonOpts, ct);
+            await System.Text.Json.JsonSerializer.SerializeAsync(
+                stream,
+                _registry,
+                SiteRegistryJsonContext.Default.Registry,
+                ct);
         }
         File.Move(tmpPath, _path, overwrite: true);
     }
