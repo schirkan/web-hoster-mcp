@@ -160,6 +160,28 @@ public class SiteManager
             : 0;
     }
 
+    /// <summary>Listet alle Files einer Site rekursiv mit relativen Pfaden + result_path URLs.</summary>
+    public IReadOnlyList<DeployResultFile> ListFiles(string sitePath)
+    {
+        var siteFolder = Path.Combine(_sitesRoot, sitePath);
+        if (!Directory.Exists(siteFolder)) return Array.Empty<DeployResultFile>();
+
+        var baseUrl = BuildSiteUrl(sitePath).TrimEnd('/');
+
+        return Directory
+            .EnumerateFiles(siteFolder, "*", SearchOption.AllDirectories)
+            .Select(path =>
+            {
+                var rel = Path.GetRelativePath(siteFolder, path).Replace('\\', '/');
+                return new DeployResultFile(rel, $"{baseUrl}/{rel}");
+            })
+            .OrderBy(f => f.Path, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>Site-Base-URL mit abschließendem '/'.</summary>
+    public string GetSiteUrl(string sitePath) => BuildSiteUrl(sitePath);
+
     /// <summary>Content-Type aus File-Extension (MVP1 §Default-Content-Type-Mapping).</summary>
     public string GetContentType(string filePath)
     {
