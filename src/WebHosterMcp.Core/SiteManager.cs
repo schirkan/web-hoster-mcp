@@ -1,4 +1,5 @@
 using System.Net.Http;
+using System.Text.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -72,7 +73,7 @@ public class SiteManager
     /// <summary>Deploy/Update einer Site. Atomar (load + modify + save) innerhalb der Registry-Locks.</summary>
     public async Task<DeployResult> DeployAsync(DeployRequest request, CancellationToken ct = default)
     {
-        // --- Validation ---
+        // --- Validation: type & sitePath ---
         if (!AllowedTypes.Contains(request.Type))
             return ErrorResult("invalid_type");
 
@@ -87,7 +88,7 @@ public class SiteManager
         }
 
         var mode = string.IsNullOrEmpty(request.Mode) ? "merge" : request.Mode;
-        if (mode != "merge" && mode != "replace")
+        if (request.Type == "files" && mode != "merge" && mode != "replace")
         {
             return ErrorResult("invalid_mode", sitePath);
         }
@@ -99,16 +100,55 @@ public class SiteManager
             return ErrorResult("type_immutable", sitePath);
         }
 
-        // --- Process files (nur für type=files; andere Types: keine Files-Operations) ---
+        // --- Type-specific validation & storage ---
         List<DeployResultFile>? resultFiles = null;
-        if (request.Type == "files")
+        string? pathForRegistry = null;
+
+        switch (request.Type)
         {
-            var fileResult = await WriteFilesAsync(sitePath, mode, request.Files ?? Array.Empty<FileEntry>(), ct);
-            if (fileResult.Error != null)
-            {
-                return ErrorResult(fileResult.Error, sitePath);
-            }
-            resultFiles = fileResult.ResultFiles;
+            case "files":
+                if (request.Path != null)
+                    return ErrorResult("path_not_allowed_for_files", sitePath);
+                if (request.Payload != null)
+                    return ErrorResult("payload_not_allowed_for_files", sitePath);
+
+                var fileResult = await WriteFilesAsync(sitePath, mode, request.Files ?? Array.Empty<FileEntry>(), ct);
+                if (fileResult.Error != null)
+                {
+                    return ErrorResult(fileResult.Error, sitePath);
+                }
+                resultFiles = fileResult.ResultFiles;
+                break;
+
+            case "folder":
+                if (request.Files != null && request.Files.Count > 0)
+                    return ErrorResult("files_not_allowed_for_folder", sitePath);
+                if (request.Payload != null)
+                    return ErrorResult("payload_not_allowed_for_folder", sitePath);
+
+                if (string.IsNullOrEmpty(request.Path))
+                    return ErrorResult("path_required", sitePath);
+                if (request.Path.Contains("..", StringComparison.Ordinal))
+                    return ErrorResult("path_traversal", sitePath);
+                if (request.Path.Length > 260)
+                    return ErrorResult("path_too_long", sitePath);
+                pathForRegistry = request.Path;
+                break;
+
+            case "a2ui":
+            case "json-schema-form":
+                if (request.Files != null && request.Files.Count > 0)
+                    return ErrorResult($"files_not_allowed_for_{request.Type.Replace("-", "_")}", sitePath);
+                if (request.Path != null)
+                    return ErrorResult("path_not_allowed_for_render", sitePath);
+
+                if (request.Payload == null)
+                    return ErrorResult("payload_required", sitePath);
+
+                var payloadError = await WritePayloadAsync(sitePath, request.Payload.Value, ct);
+                if (payloadError != null)
+                    return ErrorResult(payloadError, sitePath);
+                break;
         }
 
         // --- Retention ---
@@ -121,6 +161,7 @@ public class SiteManager
         {
             SitePath = sitePath,
             Type = request.Type,
+            Path = pathForRegistry,
             CreatedAt = existing?.CreatedAt ?? DateTime.Now,
             UpdatedAt = DateTime.Now,
             RetentionSeconds = retentionSeconds
@@ -211,31 +252,132 @@ public class SiteManager
         return true;
     }
 
-    /// <summary>Zählt Files rekursiv (für file_count).</summary>
+    /// <summary>Zählt Files rekursiv (für file_count). Liefert bei folder-type den Host-Folder, sonst den Site-Folder.</summary>
     public int CountFiles(string sitePath)
     {
-        var siteFolder = Path.Combine(_sitesRoot, sitePath);
-        return Directory.Exists(siteFolder)
-            ? Directory.EnumerateFiles(siteFolder, "*", SearchOption.AllDirectories).Count()
+        var entry = GetEntrySync(sitePath);
+        var baseFolder = entry is not null
+            ? ResolveBaseFolder(entry)
+            : Path.Combine(_sitesRoot, sitePath);
+
+        return baseFolder != null && Directory.Exists(baseFolder)
+            ? Directory.EnumerateFiles(baseFolder, "*", SearchOption.AllDirectories).Count()
             : 0;
     }
 
-    /// <summary>Listet alle Files einer Site rekursiv mit relativen Pfaden + result_path URLs.</summary>
+    /// <summary>Listet alle Files einer Site rekursiv mit relativen Pfaden + result_path URLs. Liefert bei folder-type den Host-Folder, sonst den Site-Folder.</summary>
     public IReadOnlyList<DeployResultFile> ListFiles(string sitePath)
     {
-        var siteFolder = Path.Combine(_sitesRoot, sitePath);
-        if (!Directory.Exists(siteFolder)) return Array.Empty<DeployResultFile>();
+        var entry = GetEntrySync(sitePath);
+        var baseFolder = entry is not null
+            ? ResolveBaseFolder(entry)
+            : Path.Combine(_sitesRoot, sitePath);
+
+        if (baseFolder is null || !Directory.Exists(baseFolder)) return Array.Empty<DeployResultFile>();
 
         var baseUrl = BuildSiteUrl(sitePath).TrimEnd('/');
 
         return Directory
-            .EnumerateFiles(siteFolder, "*", SearchOption.AllDirectories)
+            .EnumerateFiles(baseFolder, "*", SearchOption.AllDirectories)
             .Select(path =>
             {
-                var rel = Path.GetRelativePath(siteFolder, path).Replace('\\', '/');
+                var rel = Path.GetRelativePath(baseFolder, path).Replace('\\', '/');
                 return new DeployResultFile(rel, $"{baseUrl}/{rel}");
             })
             .OrderBy(f => f.Path, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private SiteEntry? GetEntrySync(string sitePath)
+    {
+        // Ensure registry is loaded (idempotent, fast no-op wenn bereits geladen)
+        _registry.LoadAsync().GetAwaiter().GetResult();
+        return _registry.ReadAsync(sitePath).GetAwaiter().GetResult();
+    }
+
+    /// <summary>Liefert den Host-Folder für folder-type, sonst den Site-Folder unter SitesRoot.</summary>
+    private string? ResolveBaseFolder(SiteEntry entry)
+    {
+        if (string.Equals(entry.Type, "folder", StringComparison.Ordinal) && !string.IsNullOrEmpty(entry.Path))
+            return entry.Path;
+        return Path.Combine(_sitesRoot, entry.SitePath);
+    }
+
+    /// <summary>Liefert den Host-Folder für folder-type, sonst null.</summary>
+    public string? GetHostFolderPath(SiteEntry entry)
+        => string.Equals(entry.Type, "folder", StringComparison.Ordinal) && !string.IsNullOrEmpty(entry.Path)
+            ? entry.Path
+            : null;
+
+    /// <summary>Liefert den Site-Folder unter <SitesRoot>/<site>/ (für files/a2ui/schema-form).</summary>
+    public string GetSiteFolderPath(string sitePath) => Path.Combine(_sitesRoot, sitePath);
+
+    /// <summary>Liest payload.json (a2ui / schema-form). Null wenn nicht vorhanden.</summary>
+    public async Task<JsonElement?> GetPayloadAsync(string sitePath, CancellationToken ct = default)
+    {
+        var payloadPath = Path.Combine(_sitesRoot, sitePath, "payload.json");
+        if (!File.Exists(payloadPath)) return null;
+
+        await using var stream = File.OpenRead(payloadPath);
+        return await JsonSerializer.DeserializeAsync<JsonElement>(stream, cancellationToken: ct);
+    }
+
+    /// <summary>Speichert einen Submission-Body. Gibt (id, receivedAt, error) zurück.</summary>
+    public async Task<(string SubmissionId, DateTime ReceivedAt, string? Error)> SaveSubmissionAsync(string sitePath, string body, CancellationToken ct = default)
+    {
+        var siteFolder = Path.Combine(_sitesRoot, sitePath);
+        if (!Directory.Exists(siteFolder))
+            return ("", DateTime.MinValue, "site_not_found");
+
+        if (body.Length > _sitesOptions.MaxSubmissionSizeBytes)
+            return ("", DateTime.MinValue, "submission_too_large");
+
+        try
+        {
+            using var _ = JsonDocument.Parse(body);
+        }
+        catch
+        {
+            return ("", DateTime.MinValue, "invalid_json");
+        }
+
+        var timestamp = DateTime.Now;
+        var submissionId = $"{timestamp:yyyy-MM-ddTHH-mm-ss}_{GenerateRandomString(8)}";
+        var submissionPath = Path.Combine(siteFolder, $"{submissionId}.json");
+
+        var bytes = Encoding.UTF8.GetBytes(body);
+        var tmpPath = submissionPath + ".tmp";
+        await File.WriteAllBytesAsync(tmpPath, bytes, ct);
+        File.Move(tmpPath, submissionPath, overwrite: true);
+
+        return (submissionId, timestamp, null);
+    }
+
+    /// <summary>Listet Submissions einer json-schema-form Site (neueste zuerst).</summary>
+    public async Task<IReadOnlyList<SubmissionInfo>> GetSubmissionsAsync(string sitePath, DateTime? since, int limit, CancellationToken ct = default)
+    {
+        var siteFolder = Path.Combine(_sitesRoot, sitePath);
+        if (!Directory.Exists(siteFolder)) return Array.Empty<SubmissionInfo>();
+
+        var submissions = new List<SubmissionInfo>();
+        foreach (var file in Directory.EnumerateFiles(siteFolder, "*.json"))
+        {
+            var fileName = Path.GetFileName(file);
+            if (string.Equals(fileName, "payload.json", StringComparison.Ordinal)) continue;
+            if (!IsSubmissionFileName(fileName)) continue;
+
+            var id = Path.GetFileNameWithoutExtension(fileName);
+            var receivedAt = File.GetLastWriteTime(file);
+            if (since.HasValue && receivedAt <= since.Value) continue;
+
+            await using var stream = File.OpenRead(file);
+            var data = await JsonSerializer.DeserializeAsync<JsonElement>(stream, cancellationToken: ct);
+            submissions.Add(new SubmissionInfo(id, receivedAt, data));
+        }
+
+        return submissions
+            .OrderByDescending(s => s.ReceivedAt)
+            .Take(Math.Clamp(limit, 1, 500))
             .ToList();
     }
 
@@ -458,6 +600,47 @@ public class SiteManager
         return new string(bytes.Select(b => chars[b % chars.Length]).ToArray());
     }
 
+    private static string GenerateRandomString(int length)
+    {
+        const string chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+        var bytes = new byte[length];
+        RandomNumberGenerator.Fill(bytes);
+        return new string(bytes.Select(b => chars[b % chars.Length]).ToArray());
+    }
+
+    /// <summary>Writes payload.json (a2ui / schema-form). Returns error code or null.</summary>
+    private async Task<string?> WritePayloadAsync(string sitePath, JsonElement payload, CancellationToken ct)
+    {
+        var siteFolder = Path.Combine(_sitesRoot, sitePath);
+        Directory.CreateDirectory(siteFolder);
+        var payloadPath = Path.Combine(siteFolder, "payload.json");
+
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(payload);
+        if (bytes.Length > _sitesOptions.MaxPayloadSizeBytes)
+            return "payload_too_large";
+
+        var tmpPath = payloadPath + ".tmp";
+        await File.WriteAllBytesAsync(tmpPath, bytes, ct);
+        File.Move(tmpPath, payloadPath, overwrite: true);
+        return null;
+    }
+
+    private static bool IsSubmissionFileName(string fileName)
+    {
+        var name = Path.GetFileNameWithoutExtension(fileName);
+        if (name.Length < 20) return false;
+        return name[4] == '-' && name[7] == '-' && name[10] == 'T' &&
+               name[13] == '-' && name[16] == '-' && name[19] == '_';
+    }
+
+    private static (string Id, DateTime ReceivedAt) ParseSubmissionFileName(string fileName)
+    {
+        var name = Path.GetFileNameWithoutExtension(fileName);
+        var ts = DateTime.ParseExact(name.Substring(0, 19), "yyyy-MM-ddTHH-mm-ss",
+            System.Globalization.CultureInfo.InvariantCulture);
+        return (name, ts);
+    }
+
     private string BuildSiteUrl(string sitePath)
     {
         var host = _hostOptions.Ip;
@@ -484,6 +667,8 @@ public record DeployRequest(
     string Type = "files",
     string Mode = "merge",
     int? RetentionSeconds = null,
+    string? Path = null,
+    JsonElement? Payload = null,
     IReadOnlyList<FileEntry>? Files = null);
 
 public record FileEntry(string Path, string? Content = null, bool Delete = false, string? Src = null);
@@ -495,3 +680,5 @@ public record DeployResult(
     string? Error);
 
 public record DeployResultFile(string Path, string ResultPath);
+
+public record SubmissionInfo(string SubmissionId, DateTime ReceivedAt, JsonElement Data);

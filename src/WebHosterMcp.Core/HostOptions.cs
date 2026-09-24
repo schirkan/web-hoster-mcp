@@ -61,6 +61,12 @@ public class SitesOptions
 
     /// <summary>Max File-Größe in Bytes für inline `content` (Default 1 MB = 1048576).</summary>
     public int MaxFileSizeBytes { get; set; } = 1_048_576;
+
+    /// <summary>Max Größe in Bytes für `payload.json` bei a2ui/schema-form (Default 1 MB).</summary>
+    public int MaxPayloadSizeBytes { get; set; } = 1_048_576;
+
+    /// <summary>Max Größe in Bytes für Submission-Bodies bei json-schema-form (Default 1 MB).</summary>
+    public int MaxSubmissionSizeBytes { get; set; } = 1_048_576;
 }
 
 /// <summary>`src`-Download Optionen (Data URL / lokaler Pfad / HTTP/HTTPS).</summary>

@@ -16,12 +16,14 @@ public sealed class SiteTools
     }
 
     [McpServerTool(Name = "deploy")]
-    [Description("Deployt/updated eine files-Site. mode=merge|replace, site_path optional.")]
+    [Description("Deployt/updated eine Site. mode=merge|replace (files), site_path optional. path fuer folder, payload fuer a2ui/schema-form.")]
     public async Task<DeployToolResponse> Deploy(
         string? site_path = null,
         string type = "files",
         string mode = "merge",
         int? retention_seconds = null,
+        string? path = null,
+        System.Text.Json.JsonElement? payload = null,
         IReadOnlyList<DeployToolFileEntry>? files = null,
         CancellationToken cancellationToken = default)
     {
@@ -30,7 +32,7 @@ public sealed class SiteTools
             .ToArray();
 
         var result = await _siteManager.DeployAsync(
-            new DeployRequest(site_path, type, mode, retention_seconds, requestFiles),
+            new DeployRequest(site_path, type, mode, retention_seconds, path, payload, requestFiles),
             cancellationToken);
 
         return new DeployToolResponse(
@@ -106,6 +108,31 @@ public sealed class SiteTools
         var deleted = await _siteManager.DeleteAsync(site_path, cancellationToken);
         return new DeleteSiteResponse(site_path, deleted);
     }
+
+    [McpServerTool(Name = "get_submissions")]
+    [Description("Listet Submissions einer json-schema-form Site (neueste zuerst). Optional: since (ISO-8601), limit (default 50, max 500).")]
+    public async Task<IReadOnlyList<SubmissionInfoDto>> GetSubmissions(
+        string site_path,
+        string? since = null,
+        int? limit = null,
+        CancellationToken cancellationToken = default)
+    {
+        DateTime? sinceDt = null;
+        if (!string.IsNullOrEmpty(since) && DateTime.TryParse(since, out var dt))
+        {
+            sinceDt = dt;
+        }
+        var effectiveLimit = limit ?? 50;
+
+        var entries = await _siteManager.GetSubmissionsAsync(site_path, sinceDt, effectiveLimit, cancellationToken);
+
+        return entries
+            .Select(e => new SubmissionInfoDto(
+                submission_id: e.SubmissionId,
+                received_at: e.ReceivedAt.ToString("yyyy-MM-ddTHH:mm:ss"),
+                data: e.Data))
+            .ToArray();
+    }
 }
 
 public sealed record DeployToolFileEntry(
@@ -149,3 +176,8 @@ public sealed record GetSiteInfoResponse(
 public sealed record DeleteSiteResponse(
     [property: JsonPropertyName("site_path")] string site_path,
     [property: JsonPropertyName("deleted")] bool deleted);
+
+public sealed record SubmissionInfoDto(
+    [property: JsonPropertyName("submission_id")] string submission_id,
+    [property: JsonPropertyName("received_at")] string received_at,
+    [property: JsonPropertyName("data")] System.Text.Json.JsonElement data);

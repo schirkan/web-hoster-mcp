@@ -18,6 +18,7 @@ public class SiteEntry
 {
     public string SitePath { get; set; } = "";
     public string Type { get; set; } = "files";
+    public string? Path { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
     public int RetentionSeconds { get; set; } = 0;
