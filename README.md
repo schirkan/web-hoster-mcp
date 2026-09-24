@@ -54,6 +54,97 @@ git push origin v1.0.0
 
 ---
 
+## Lokale Installation
+
+### Endanwender: Release-Binary aus GitHub
+
+Das aktuellste Release-Asset ist `WebHosterMcp.Host-<tag>-win-x64.zip` — **self-contained + trimmed + single-file** für `win-x64`. Es ist **kein .NET-Runtime-Install** nötig.
+
+```powershell
+$tag = (Invoke-RestMethod https://api.github.com/repos/schirkan/web-hoster-mcp/releases/latest).tag_name
+Invoke-WebRequest "https://github.com/schirkan/web-hoster-mcp/releases/download/$tag/WebHosterMcp.Host-$tag-win-x64.zip" -OutFile "$env:USERPROFILE\Downloads\WebHosterMcp.zip"
+Expand-Archive "$env:USERPROFILE\Downloads\WebHosterMcp.zip" -DestinationPath "$env:LOCALAPPDATA\web-hoster-mcp"
+```
+
+→ ergibt z. B. `C:\Users\<USER>\AppData\Local\web-hoster-mcp\WebHosterMcp.Host.exe`.
+
+### Im Coding-Agent registrieren (z. B. OpenClaw)
+
+**CLI (empfohlen) — ohne env vars, wenn `appsettings.json` neben der Binary die Werte liefert:**
+
+```powershell
+openclaw mcp add web-hoster-mcp --command "C:\Users\<USER>\AppData\Local\web-hoster-mcp\WebHosterMcp.Host.exe"
+```
+
+**Per Hand** in `~/.openclaw/openclaw.json` → `plugins.mcpServers.web-hoster-mcp`:
+
+```json
+{
+  "command": "C:\\Users\\<USER>\\AppData\\Local\\web-hoster-mcp\\WebHosterMcp.Host.exe",
+  "args": [],
+  "env": {
+    "Sites__SitesRoot":             "C:\\Users\\<USER>\\Documents\\web-hoster-sites",
+    "Host__Port":                   "3000",
+    "Retention__DefaultTtlSeconds": "604800"
+  }
+}
+```
+
+Verifizieren:
+
+```powershell
+openclaw mcp list
+```
+
+Die MCP-Tools `deploy`, `list_sites`, `get_site_info`, `delete_site`, `get_submissions` sind im Agent verfügbar.
+
+### Architekturhinweis
+
+Der Server spricht **MCP-over-stdio** (`Program.cs` → `AddMcpServer().WithStdioServerTransport()`). stdin/stdout ist das Wire-Format zwischen Agent und Server — die Konsole bleibt sauber. Parallel läuft Kestrel auf Port 3000 (HTTP, optional Port 3443 HTTPS) und liefert die deployten Sites als Web-UI aus. Beide Pfade laufen im selben Prozess — keine zwei Binaries, keine zwei Configs.
+
+### Konfiguration
+
+`WebApplication.CreateBuilder` lädt `appsettings.json` automatisch aus dem **Binary-Verzeichnis** (`ContentRootPath`). Layer-Priorität (höchste zuerst):
+
+1. Kommandozeile (`--Kestrel:Endpoints:Http:Url=...`)
+2. **Umgebungsvariablen** (Doppel-Underscore-Schreibweise für nested Config, z. B. `Sites__SitesRoot`)
+3. `appsettings.{ASPNETCORE_ENVIRONMENT}.json`
+4. `appsettings.json`
+
+**Defaults reichen?** Im Release-ZIP liegt eine `appsettings.json` neben der `.exe` mit den Repo-Defaults: `SitesRoot: "./sites"`, `Host:Ip: "0.0.0.0"`, Port 3000, Retention 7 d, Src-Timeout 30 s, Self-Signed-HTTPS on. **Kein Setup nötig**, der Server bootet damit.
+
+**Eigene Werte ohne env vars:** Direkt in die `appsettings.json` neben der Binary editieren:
+
+```json
+{
+  "Logging":   { "LogLevel": { "Default": "Information", "Microsoft.AspNetCore": "Warning" } },
+  "Host":      { "Ip": "127.0.0.1", "Port": 3000, "UseHttps": false },
+  "Retention": { "Enabled": true, "DefaultTtlSeconds": 604800, "CheckIntervalSeconds": 3600 },
+  "Src":       { "HttpTimeoutSeconds": 30 },
+  "SitesRoot": "C:\\Users\\<USER>\\Documents\\web-hoster-sites",
+  "MaxFileSizeBytes":      1048576,
+  "MaxPayloadSizeBytes":   1048576,
+  "MaxSubmissionSizeBytes":1048576
+}
+```
+
+**Profile trennen:** `ASPNETCORE_ENVIRONMENT=Local` aktiviert zusätzlich `appsettings.Local.json` als Layer-Override — so vermeidet man `--env`-Flag-Ketten in `openclaw mcp add`.
+
+**Ohne jegliche JSON-Datei** bootet der Server mit den C#-Property-Defaults aus `HostOptions`/`SitesOptions`.
+
+**Caveat — relativer Pfad:** `SitesRoot: "./sites"` ist **relativ zum CWD** des Prozesses. Beim Spawn durch den Coding-Agent ist das CWD oft das Agent-Workspace, nicht das Binary-Verzeichnis. Für reproduzierbare Site-Folder lieber **Absolutpfad** setzen (siehe Beispiel oben).
+
+### Varianten, falls relevant
+
+| Variante | Wann |
+|---|---|
+| Release-Binary (oben) | Endanwender / Coding-Agent |
+| `git clone … && dotnet run --project src/WebHosterMcp.Host` | Dev-Setup, Quellcode direkt testen (.NET 8 SDK nötig) |
+| Docker auf `mcr.microsoft.com/dotnet/runtime:8.0` | Linux-Server, CI-Reproduzierbarkeit |
+| npm-Wrapper | Aktuell unnötig — die `.exe` ist self-contained |
+
+---
+
 ## Tech Stack
 
 - **Sprache:** C# 12
@@ -66,7 +157,9 @@ git push origin v1.0.0
 
 ---
 
-## Schnellstart (geplant)
+## Schnellstart (Dev)
+
+Für Endanwender ohne .NET-SDK: [Lokale Installation](#lokale-installation).
 
 ```bash
 dotnet build
