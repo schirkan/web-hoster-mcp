@@ -1,7 +1,7 @@
 # Web Hoster MCP — AGENTS.md
 
 Projekt: **Web Hoster MCP**
-Status: MVP3 implementiert
+Status: MVP4 implementiert
 Letztes Update: 2026-09-24
 
 ---
@@ -14,7 +14,7 @@ MIT — siehe [LICENSE](./LICENSE)
 
 ## Current Status
 
-Stand: 2026-09-24 (07:45)
+Stand: 2026-09-24 (10:25)
 
 - [x] MVP1-Spec v1.3: `specs/mvp1.md` — `type: "files"`-Pfad, 4 Tools, `content` plain-only, **Path-Validation (`..`/MAX_PATH)**, **timestamps lokal**, **replace+empty deletes all**, Cross-Ref auf MVP3 für `src`, Lock-Semantik-Footer
 - [x] MVP2-Spec v1.3: `specs/mvp2.md` — HTTPS (Beides, SAN, Self-Signed Fallback) + Retention (7d Default, 1h Interval mit **Range-Validation**, Background-Timer, Hard Delete) + HTTP-Delete-Endpoints mit **DELETE-Methode** + **`Host:UseHttps=false` → HTTPS off** + **`folder`-Retention: Registry weg, Host-Folder bleibt, Re-Deploy setzt `path` + `updated_at`** + Lock-Semantik-Footer
@@ -31,7 +31,9 @@ Stand: 2026-09-24 (07:45)
 - [x] Neu in Code: `SiteTools` (`deploy`, `list_sites`, `get_site_info`, `delete_site`), Static File Serving Route, E2E-Tests
 - [x] MVP2 in Code implementiert: HTTPS-Listener (PFX/Self-Signed), Retention-Background-Service, HTTP-DELETE-Endpunkte + Delete-Buttons in Listings
 - [x] MVP3 in Code implementiert: `per-File src` (Data URL / lokaler Pfad / HTTP/HTTPS), HttpClient mit Timeout, source-generated JSON context
-- [x] Tests erweitert: `64/64` grün (inkl. MVP3-Tests mit `StubHttpMessageHandler`)
+- [x] MVP4 in Code implementiert (Commit `01d62ec`, Tag `v0.0.6`): 4 Hosting-Typen `files`/`folder`/`a2ui`/`json-schema-form` mit Type-aware `DeployAsync` + Path-Validation, `payload.json` (1 MB), `POST /<site>/submit` (1 MB), `get_submissions` MCP-Tool mit `since`/`limit`, Render-Templates (React+A2UI / React+RJSF via CDN)
+- [x] MVP-Refactoring durchgeführt (Commit `8b88af1`, Tag `v0.0.5`): alle `MVP*`-Erwähnungen aus Code + Kommentaren entfernt, einheitliches Naming (`SrcOptions`, `SiteE2ETests`, `ServerCoreTests`, `SrcDownloadTests`)
+- [x] Tests erweitert: `87/87` grün (inkl. MVP3-Tests mit `StubHttpMessageHandler` + 23 MVP4-HostingTypenTests)
 - [x] CI Workflow entfernt (gewollt) — nur Tag-basierter Release-Workflow aktiv
 - [x] Release Workflow angepasst: `.github/workflows/release.yml` mit **self-contained + trimmed publish** (`win-x64`)
 
@@ -57,7 +59,7 @@ Stand: 2026-09-24 (07:45)
 - **Was wird gebaut:** .NET 8 Solution (`WebHosterMcp.sln`) + Tests + self-contained, single-file, trimmed Host-Publish (`win-x64`)
 - **Output / Artefakte:**
   - Release Asset: `WebHosterMcp.Host-<tag>-win-x64.zip`
-- **Letzter bekannter Lauf:** Workflow-Definition angepasst am 2026-09-23 (CI entfernt, `PublishTrimmed=true` im Release), nächster Tag-Lauf ausstehend
+- **Letzter bekannter Lauf:** Release-Workflow erfolgreich für Tags `v0.0.5` (Refactoring-Stand `8b88af1`) und `v0.0.6` (MVP4-Stand `01d62ec`) — self-contained + trimmed `win-x64`-Artefakt erstellt und GitHub-Release-Asset hochgeladen
 
 ---
 
@@ -66,7 +68,7 @@ Stand: 2026-09-24 (07:45)
 Board-ID: `web-hoster-mcp` (= Projektordner-Name)
 Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 
-**Stats:** 26 Karten — 8 done + 16 backlog + 2 todo
+**Stats:** 26 Karten — 17 done + 7 backlog + 2 todo (MVP1: 7 done, MVP2: 1 done + 5 backlog, MVP3: 4 backlog, MVP4: 9 done)
 
 ### MVP1 — Base (7 Karten)
 
@@ -102,17 +104,17 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 
 ### MVP4 — Hosting Typen (9 Karten)
 
-| ID | Titel | Priorität |
-|----|-------|-----------|
-| 44a3bd38 | type-Field + Immutable-Registry | high |
-| 8cfaf757 | Type-Dispatch im Kestrel-Routing (Hosting-Typen) | high |
-| 91948250 | folder-Type (Host-Folder-Mirror) | normal |
-| f975b7a0 | files-Type Subfolder-Support (rekursives Listing) | normal |
-| 78196a80 | React-Template-Generator (HTML + CDN-Scripts) | high |
-| b2f0e65e | A2UI-Render-Pipeline (offizieller React-Renderer) | normal |
-| ed171227 | Schema-Form-Render-Pipeline (RJSF) | normal |
-| 9567975c | Submit-Endpoint + get_submissions Tool | normal |
-| 2c27bae7 | E2E-Test MVP4 (a2ui + schema-form + folder) | high |
+| ID | Titel | Priorität | Status |
+|----|-------|-----------|--------|
+| 44a3bd38 | type-Field + Immutable-Registry | high | ✅ done (Commit 01d62ec) |
+| 8cfaf757 | Type-Dispatch im Kestrel-Routing (Hosting-Typen) | high | ✅ done (Commit 01d62ec) |
+| 91948250 | folder-Type (Host-Folder-Mirror) | normal | ✅ done (Commit 01d62ec) |
+| f975b7a0 | files-Type Subfolder-Support (rekursives Listing) | normal | ✅ done (Commit 01d62ec) |
+| 78196a80 | React-Template-Generator (HTML + CDN-Scripts) | high | ✅ done (Commit 01d62ec) |
+| b2f0e65e | A2UI-Render-Pipeline (offizieller React-Renderer) | normal | ✅ done (Commit 01d62ec) |
+| ed171227 | Schema-Form-Render-Pipeline (RJSF) | normal | ✅ done (Commit 01d62ec) |
+| 9567975c | Submit-Endpoint + get_submissions Tool | normal | ✅ done (Commit 01d62ec) |
+| 2c27bae7 | E2E-Test MVP4 (a2ui + schema-form + folder) | high | ✅ done (Commit 01d62ec) |
 
 ---
 
