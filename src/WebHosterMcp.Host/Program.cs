@@ -17,6 +17,7 @@ builder.Services.Configure<HostOptions>(builder.Configuration.GetSection("Host")
 builder.Services.Configure<HttpsOptions>(builder.Configuration.GetSection("Https"));
 builder.Services.Configure<RetentionOptions>(builder.Configuration.GetSection("Retention"));
 builder.Services.Configure<SitesOptions>(builder.Configuration);
+builder.Services.Configure<Mvp3Options>(builder.Configuration.GetSection("Mvp3"));
 
 // Core-Services
 builder.Services.AddSingleton(sp =>

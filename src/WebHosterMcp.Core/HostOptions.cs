@@ -62,3 +62,10 @@ public class SitesOptions
     /// <summary>Max File-Größe in Bytes auf Platte (Default 1 MB = 1048576).</summary>
     public int MaxFileSizeBytes { get; set; } = 1_048_576;
 }
+
+/// <summary>MVP3 — `src`-Download Optionen.</summary>
+public class Mvp3Options
+{
+    /// <summary>HTTP-Timeout in Sekunden für `src` HTTP/HTTPS Downloads. Default 30s.</summary>
+    public int HttpTimeoutSeconds { get; set; } = 30;
+}

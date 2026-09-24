@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -18,6 +19,8 @@ public class SiteManager
     private readonly HostOptions _hostOptions;
     private readonly RetentionOptions _retentionOptions;
     private readonly string _sitesRoot;
+    private readonly Mvp3Options _mvp3Options;
+    private readonly HttpMessageHandler? _httpMessageHandler;
 
     private static readonly Regex SitePathRegex = new(@"^[a-z0-9-]{3,32}$", RegexOptions.Compiled);
     private static readonly HashSet<string> AllowedTypes = new(StringComparer.Ordinal)
@@ -50,12 +53,16 @@ public class SiteManager
         SiteRegistry registry,
         SitesOptions sitesOptions,
         HostOptions hostOptions,
-        RetentionOptions? retentionOptions = null)
+        RetentionOptions? retentionOptions = null,
+        Mvp3Options? mvp3Options = null,
+        HttpMessageHandler? httpMessageHandler = null)
     {
         _registry = registry;
         _sitesOptions = sitesOptions;
         _hostOptions = hostOptions;
         _retentionOptions = retentionOptions ?? new RetentionOptions();
+        _mvp3Options = mvp3Options ?? new Mvp3Options();
+        _httpMessageHandler = httpMessageHandler;
         _sitesRoot = Path.GetFullPath(sitesOptions.SitesRoot);
         Directory.CreateDirectory(_sitesRoot);
     }
@@ -299,24 +306,22 @@ public class SiteManager
             {
                 // MVP1 v1.3: content ist plain string, KEINE Data-URL-Sonderbehandlung
                 bytes = Encoding.UTF8.GetBytes(f.Content);
-            }
-            else if (f.Src!.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
-            {
-                bytes = ParseDataUrl(f.Src!);
+
+                // MVP1: 1 MB Limit nur für inline `content`
+                if (bytes.Length > _sitesOptions.MaxFileSizeBytes)
+                {
+                    return new FileWriteResult { Error = "file_too_large" };
+                }
             }
             else
             {
-                // MVP1: lokaler Pfad (Data URL → src; HTTP-URL → MVP3)
-                if (!File.Exists(f.Src!))
+                var srcResult = await ResolveSrcBytesAsync(f.Src!, ct);
+                if (srcResult.Error != null)
                 {
-                    return new FileWriteResult { Error = "src_not_found" };
+                    return new FileWriteResult { Error = srcResult.Error };
                 }
-                bytes = await File.ReadAllBytesAsync(f.Src!, ct);
-            }
-
-            if (bytes.Length > _sitesOptions.MaxFileSizeBytes)
-            {
-                return new FileWriteResult { Error = "file_too_large" };
+                bytes = srcResult.Bytes!;
+                // MVP3: kein 1 MB Limit für `src`-Downloads
             }
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
@@ -337,6 +342,100 @@ public class SiteManager
         // Absolute (Unix / or Windows C:) → as-is; Relative → combine with siteFolder
         var isAbsolute = userPath.StartsWith('/') || (userPath.Length >= 2 && userPath[1] == ':');
         return Path.GetFullPath(isAbsolute ? userPath : Path.Combine(siteFolder, userPath));
+    }
+
+    /// <summary>
+    /// MVP3 — löst `src` zu Bytes auf. Unterscheidet drei Quellen (case-insensitive):
+    /// <list type="bullet">
+    /// <item><c>data:</c>-URL → <see cref="ParseDataUrl"/></item>
+    /// <item><c>http://</c> / <c>https://</c> → <see cref="FetchHttpBytesAsync"/></item>
+    /// <item>sonst → lokaler Pfad (inkl. UNC)</item>
+    /// </list>
+    /// </summary>
+    private async Task<(byte[] Bytes, string? Error)> ResolveSrcBytesAsync(string src, CancellationToken ct)
+    {
+        if (src.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                return (ParseDataUrl(src), null);
+            }
+            catch
+            {
+                return (Array.Empty<byte>(), "src_invalid_data_url");
+            }
+        }
+
+        if (src.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            src.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            return await FetchHttpBytesAsync(src, ct);
+        }
+
+        // Local file path (Windows absolut, Unix absolut, UNC)
+        if (!File.Exists(src))
+        {
+            return (Array.Empty<byte>(), "src_not_found");
+        }
+
+        return (await File.ReadAllBytesAsync(src, ct), null);
+    }
+
+    /// <summary>
+    /// MVP3 — HTTP/HTTPS Download via HttpClient.
+    /// - Timeout: <see cref="Mvp3Options.HttpTimeoutSeconds"/> via Constructor
+    /// - Trust-Modell: keine Cert-Validation (LAN-only, default HttpClientHandler mit bypass)
+    /// - Error-Codes: <c>src_timeout</c>, <c>src_unreachable</c>, <c>src_fetch_failed</c>
+    /// </summary>
+    private async Task<(byte[] Bytes, string? Error)> FetchHttpBytesAsync(string url, CancellationToken ct)
+    {
+        HttpMessageHandler handler;
+        if (_httpMessageHandler != null)
+        {
+            handler = _httpMessageHandler;
+        }
+        else
+        {
+            handler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = (msg, cert, chain, errors) => true
+            };
+        }
+
+        using var http = new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromSeconds(_mvp3Options.HttpTimeoutSeconds)
+        };
+
+        try
+        {
+            using var response = await http.GetAsync(url, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                return (Array.Empty<byte>(), "src_fetch_failed");
+            }
+            var bytes = await response.Content.ReadAsByteArrayAsync(ct);
+            return (bytes, null);
+        }
+        catch (TaskCanceledException) when (ct.IsCancellationRequested)
+        {
+            // user cancellation -> propagate
+            throw;
+        }
+        catch (TaskCanceledException)
+        {
+            // HttpClient.Timeout
+            return (Array.Empty<byte>(), "src_timeout");
+        }
+        catch (HttpRequestException)
+        {
+            // DNS / TCP / TLS errors
+            return (Array.Empty<byte>(), "src_unreachable");
+        }
+        catch
+        {
+            return (Array.Empty<byte>(), "src_unreachable");
+        }
     }
 
     private static byte[] ParseDataUrl(string dataUrl)
