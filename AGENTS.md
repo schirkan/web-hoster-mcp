@@ -1,7 +1,7 @@
 # Web Hoster MCP — AGENTS.md
 
 Projekt: **Web Hoster MCP**
-Status: MVP4 implementiert
+Status: MVP1–MVP4 implementiert (inkl. E2E-Tests)
 Letztes Update: 2026-09-24
 
 ---
@@ -26,15 +26,16 @@ Stand: 2026-09-24 (10:25)
 - [x] LICENSE (MIT) hinzugefügt
 - [x] `_archive/` Ordner entfernt
 - [x] README.md mit allen Spec-Versionen (MVP1 v1.3, MVP2 v1.3, MVP2-Listing v1.3, MVP3 v1.1, MVP4 v2.2)
-- [x] Workboard `web-hoster-mcp` aktiv gepflegt (26 Karten, **24 done** + 2 backlog)
+- [x] Workboard `web-hoster-mcp` aktiv gepflegt (26 Karten, **26 done**)
 - [x] Stale MVP2/MVP3-Karten nachträglich als done geschlossen (Code war bereits in Commits `fe6bbad`/`b1afdeb` enthalten): `d1dbec46`, `4c858484`, `775a5686`, `a65169c7` (MVP2) und `e177237e`, `959769fe`, `f32fb8a0` (MVP3)
+- [x] Letzte 2 Backlog-Karten als E2E-Tests implementiert: `c2a52cad` (`ServerE2ETests.cs`, 9 Tests für Delete-Site/Delete-File/Retention-TTL/Delete-Button-Render + Source-Grep) und `23efd0b1` (`SrcE2ETests.cs`, 9 Tests für src=data/local/http + Error-Cases, mit echtem lokalem `HttpListener` als Source-Server)
 - [x] MVP1 vollständig implementiert (Karten 1-7 = done)
 - [x] Neu in Code: `SiteTools` (`deploy`, `list_sites`, `get_site_info`, `delete_site`), Static File Serving Route, E2E-Tests
 - [x] MVP2 in Code implementiert: HTTPS-Listener (PFX/Self-Signed), Retention-Background-Service, HTTP-DELETE-Endpunkte + Delete-Buttons in Listings
 - [x] MVP3 in Code implementiert: `per-File src` (Data URL / lokaler Pfad / HTTP/HTTPS), HttpClient mit Timeout, source-generated JSON context
 - [x] MVP4 in Code implementiert (Commit `01d62ec`, Tag `v0.0.6`): 4 Hosting-Typen `files`/`folder`/`a2ui`/`json-schema-form` mit Type-aware `DeployAsync` + Path-Validation, `payload.json` (1 MB), `POST /<site>/submit` (1 MB), `get_submissions` MCP-Tool mit `since`/`limit`, Render-Templates (React+A2UI / React+RJSF via CDN)
 - [x] MVP-Refactoring durchgeführt (Commit `8b88af1`, Tag `v0.0.5`): alle `MVP*`-Erwähnungen aus Code + Kommentaren entfernt, einheitliches Naming (`SrcOptions`, `SiteE2ETests`, `ServerCoreTests`, `SrcDownloadTests`)
-- [x] Tests erweitert: `87/87` grün (inkl. MVP3-Tests mit `StubHttpMessageHandler` + 23 MVP4-HostingTypenTests)
+- [x] Tests erweitert: `105/105` grün (inkl. MVP3-Tests mit `StubHttpMessageHandler` + 23 MVP4-HostingTypenTests + **18 E2E-Tests** für MVP2/MVP3: `ServerE2ETests.cs` (9 Tests) + `SrcE2ETests.cs` (9 Tests mit echtem lokalem `HttpListener`))
 - [x] CI Workflow entfernt (gewollt) — nur Tag-basierter Release-Workflow aktiv
 - [x] Release Workflow angepasst: `.github/workflows/release.yml` mit **self-contained + trimmed publish** (`win-x64`)
 
@@ -69,7 +70,7 @@ Stand: 2026-09-24 (10:25)
 Board-ID: `web-hoster-mcp` (= Projektordner-Name)
 Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 
-**Stats:** 26 Karten — 24 done + 2 backlog (MVP1: 7 done, MVP2: 5 done + 1 backlog, MVP3: 3 done + 1 backlog, MVP4: 9 done)
+**Stats:** 26 Karten — 26 done + 0 backlog (MVP1: 7 done, MVP2: 6 done + 0 backlog, MVP3: 4 done + 0 backlog, MVP4: 9 done)
 
 ### MVP1 — Base (7 Karten)
 
@@ -92,7 +93,7 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 | 4c858484 | Retention-Background-Service (TTL + Auto-Delete) | normal | ✅ done (Commit fe6bbad) |
 | 775a5686 | HTTP-Delete-Endpoints (DELETE-Methode) — kein Confirm-Pattern | normal | ✅ done (Commit fe6bbad) |
 | a65169c7 | Delete-Buttons in Directory-Listings (JS + DELETE) | normal | ✅ done (Commit fe6bbad) |
-| c2a52cad | E2E-Test MVP2 (HTTPS + TTL + Delete-Links) | high | 🔲 backlog |
+| c2a52cad | E2E-Test MVP2 (HTTPS + TTL + Delete-Links) | high | ✅ done (`ServerE2ETests.cs`, 9 Tests) |
 
 ### MVP3 — Per-File src (4 Karten)
 
@@ -101,7 +102,7 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 | e177237e | src-Field + Trust-Model (Data URL / local / HTTP) | normal | ✅ done (Commit b1afdeb) |
 | 959769fe | Path-Read + HTTP-Download + Data-URL-Decode + Content-Storage | normal | ✅ done (Commit b1afdeb) |
 | f32fb8a0 | Integration src in deploy-Tool (MVP1 Validation erweitern) | normal | ✅ done (Commit b1afdeb) |
-| 23efd0b1 | E2E-Test MVP3 (data-URL / local / HTTP) | normal | 🔲 backlog |
+| 23efd0b1 | E2E-Test MVP3 (data-URL / local / HTTP) | normal | ✅ done (`SrcE2ETests.cs`, 9 Tests, mit echtem lokalem `HttpListener`) |
 
 ### MVP4 — Hosting Typen (9 Karten)
 
