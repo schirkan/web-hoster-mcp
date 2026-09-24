@@ -6,8 +6,8 @@ using System.Text.RegularExpressions;
 namespace WebHosterMcp.Core;
 
 /// <summary>
-/// Site-Lifecycle-Manager für MVP1 `deploy` (type=files), `list_sites`, `get_site_info`, `delete_site`.
-/// - Input-Validation per MVP1 v1.3 (type/site_path/mode/type_immutable/path_traversal/path_too_long/duplicate_path/file_too_large/missing_content/invalid_file_entry)
+/// Site-Lifecycle-Manager für MCP-Tools `deploy` (type=files), `list_sites`, `get_site_info`, `delete_site`.
+/// - Input-Validation: type/site_path/mode/type_immutable/path_traversal/path_too_long/duplicate_path/file_too_large/missing_content/invalid_file_entry
 /// - Atomic file writes (tmp + File.Move overwrite)
 /// - Mode merge/replace semantics + empty-files handling
 /// - result_url uses LAN-IP if Host:Ip == 0.0.0.0
@@ -19,7 +19,7 @@ public class SiteManager
     private readonly HostOptions _hostOptions;
     private readonly RetentionOptions _retentionOptions;
     private readonly string _sitesRoot;
-    private readonly Mvp3Options _mvp3Options;
+    private readonly SrcOptions _srcOptions;
     private readonly HttpMessageHandler? _httpMessageHandler;
 
     private static readonly Regex SitePathRegex = new(@"^[a-z0-9-]{3,32}$", RegexOptions.Compiled);
@@ -54,14 +54,14 @@ public class SiteManager
         SitesOptions sitesOptions,
         HostOptions hostOptions,
         RetentionOptions? retentionOptions = null,
-        Mvp3Options? mvp3Options = null,
+        SrcOptions? srcOptions = null,
         HttpMessageHandler? httpMessageHandler = null)
     {
         _registry = registry;
         _sitesOptions = sitesOptions;
         _hostOptions = hostOptions;
         _retentionOptions = retentionOptions ?? new RetentionOptions();
-        _mvp3Options = mvp3Options ?? new Mvp3Options();
+        _srcOptions = srcOptions ?? new SrcOptions();
         _httpMessageHandler = httpMessageHandler;
         _sitesRoot = Path.GetFullPath(sitesOptions.SitesRoot);
         Directory.CreateDirectory(_sitesRoot);
@@ -141,15 +141,15 @@ public class SiteManager
         return new DeployResult(sitePath, url, resultFiles, null);
     }
 
-    /// <summary>Listet alle Sites (MVP1 `list_sites`).</summary>
+    /// <summary>Listet alle Sites (für `list_sites`).</summary>
     public async Task<List<SiteEntry>> ListAsync(CancellationToken ct = default)
         => await _registry.ReadAllAsync(ct);
 
-    /// <summary>Liest eine Site (MVP1 `get_site_info`).</summary>
+    /// <summary>Liest eine Site (für `get_site_info`).</summary>
     public async Task<SiteEntry?> GetAsync(string sitePath, CancellationToken ct = default)
         => await _registry.ReadAsync(sitePath, ct);
 
-    /// <summary>Löscht eine Site (MVP1 `delete_site`). Entfernt Registry-Eintrag UND Site-Folder.</summary>
+    /// <summary>Löscht eine Site (für `delete_site`). Entfernt Registry-Eintrag UND Site-Folder.</summary>
     public async Task<bool> DeleteAsync(string sitePath, CancellationToken ct = default)
     {
         var entry = await _registry.ReadAsync(sitePath, ct);
@@ -242,7 +242,7 @@ public class SiteManager
     /// <summary>Site-Base-URL mit abschließendem '/'.</summary>
     public string GetSiteUrl(string sitePath) => BuildSiteUrl(sitePath);
 
-    /// <summary>Content-Type aus File-Extension (MVP1 §Default-Content-Type-Mapping).</summary>
+    /// <summary>Content-Type aus File-Extension.</summary>
     public string GetContentType(string filePath)
     {
         var ext = Path.GetExtension(filePath);
@@ -304,10 +304,10 @@ public class SiteManager
             byte[] bytes;
             if (f.Content != null)
             {
-                // MVP1 v1.3: content ist plain string, KEINE Data-URL-Sonderbehandlung
+                // content ist plain string, KEINE Data-URL-Sonderbehandlung
                 bytes = Encoding.UTF8.GetBytes(f.Content);
 
-                // MVP1: 1 MB Limit nur für inline `content`
+                // 1 MB Limit nur für inline 'content'
                 if (bytes.Length > _sitesOptions.MaxFileSizeBytes)
                 {
                     return new FileWriteResult { Error = "file_too_large" };
@@ -321,7 +321,7 @@ public class SiteManager
                     return new FileWriteResult { Error = srcResult.Error };
                 }
                 bytes = srcResult.Bytes!;
-                // MVP3: kein 1 MB Limit für `src`-Downloads
+                // kein 1 MB Limit für 'src'-Downloads
             }
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
@@ -345,7 +345,7 @@ public class SiteManager
     }
 
     /// <summary>
-    /// MVP3 — löst `src` zu Bytes auf. Unterscheidet drei Quellen (case-insensitive):
+    /// Löst `src` zu Bytes auf. Unterscheidet drei Quellen (case-insensitive):
     /// <list type="bullet">
     /// <item><c>data:</c>-URL → <see cref="ParseDataUrl"/></item>
     /// <item><c>http://</c> / <c>https://</c> → <see cref="FetchHttpBytesAsync"/></item>
@@ -382,8 +382,8 @@ public class SiteManager
     }
 
     /// <summary>
-    /// MVP3 — HTTP/HTTPS Download via HttpClient.
-    /// - Timeout: <see cref="Mvp3Options.HttpTimeoutSeconds"/> via Constructor
+    /// HTTP/HTTPS Download via HttpClient.
+    /// - Timeout: <see cref="SrcOptions.HttpTimeoutSeconds"/> via Constructor
     /// - Trust-Modell: keine Cert-Validation (LAN-only, default HttpClientHandler mit bypass)
     /// - Error-Codes: <c>src_timeout</c>, <c>src_unreachable</c>, <c>src_fetch_failed</c>
     /// </summary>
@@ -404,7 +404,7 @@ public class SiteManager
 
         using var http = new HttpClient(handler)
         {
-            Timeout = TimeSpan.FromSeconds(_mvp3Options.HttpTimeoutSeconds)
+            Timeout = TimeSpan.FromSeconds(_srcOptions.HttpTimeoutSeconds)
         };
 
         try

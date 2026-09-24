@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace WebHosterMcp.Core;
 
 /// <summary>
-/// registry.json Schema v1 (siehe specs/mvp1.md §Storage).
+/// registry.json Schema v1.
 /// </summary>
 public class Registry
 {

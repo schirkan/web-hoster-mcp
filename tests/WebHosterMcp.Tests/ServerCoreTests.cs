@@ -6,13 +6,13 @@ using Xunit;
 
 namespace WebHosterMcp.Tests;
 
-public sealed class Mvp2CoreTests : IDisposable
+public sealed class ServerCoreTests : IDisposable
 {
     private readonly string _tempDir;
 
-    public Mvp2CoreTests()
+    public ServerCoreTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"webhoster-mvp2-{Guid.NewGuid():N}");
+        _tempDir = Path.Combine(Path.GetTempPath(), $"webhoster-server-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
     }
 

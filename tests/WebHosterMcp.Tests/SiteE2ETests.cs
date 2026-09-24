@@ -4,14 +4,14 @@ using Xunit;
 
 namespace WebHosterMcp.Tests;
 
-public sealed class Mvp1E2ETests : IDisposable
+public sealed class SiteE2ETests : IDisposable
 {
     private readonly string _tempDir;
     private readonly string _sitesRoot;
     private readonly SiteManager _manager;
     private readonly SiteTools _tools;
 
-    public Mvp1E2ETests()
+    public SiteE2ETests()
     {
         _tempDir = Path.Combine(Path.GetTempPath(), $"webhoster-e2e-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);

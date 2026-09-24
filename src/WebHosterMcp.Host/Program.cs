@@ -17,7 +17,7 @@ builder.Services.Configure<HostOptions>(builder.Configuration.GetSection("Host")
 builder.Services.Configure<HttpsOptions>(builder.Configuration.GetSection("Https"));
 builder.Services.Configure<RetentionOptions>(builder.Configuration.GetSection("Retention"));
 builder.Services.Configure<SitesOptions>(builder.Configuration);
-builder.Services.Configure<Mvp3Options>(builder.Configuration.GetSection("Mvp3"));
+builder.Services.Configure<SrcOptions>(builder.Configuration.GetSection("Src"));
 
 // Core-Services
 builder.Services.AddSingleton(sp =>
@@ -187,7 +187,7 @@ app.MapDelete("/{sitePath}/{**filePath}", async (string sitePath, string filePat
     return Results.Redirect($"/{sitePath}/");
 });
 
-// Static file serving (MVP1/MVP2)
+// Static file serving
 app.MapGet("/{sitePath}/{**filePath}", async (string sitePath, string? filePath) =>
 {
     if (string.IsNullOrWhiteSpace(filePath))

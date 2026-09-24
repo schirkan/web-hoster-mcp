@@ -19,7 +19,7 @@ public class HostOptions
     public int HttpsPort { get; set; } = 3443;
 }
 
-/// <summary>HTTPS-Cert Optionen (MVP2 §2).</summary>
+/// <summary>HTTPS-Cert Optionen.</summary>
 public class HttpsOptions
 {
     /// <summary>Optionaler PFX-Pfad. null = kein PFX, Self-Signed Fallback.</summary>
@@ -32,7 +32,7 @@ public class HttpsOptions
     public HttpsSelfSignedOptions SelfSigned { get; set; } = new();
 }
 
-/// <summary>Self-Signed Cert Generation (MVP2 §2.2).</summary>
+/// <summary>Self-Signed-Cert-Generierung (RSA 2048, SAN-Entries, persistiertes PFX).</summary>
 public class HttpsSelfSignedOptions
 {
     public bool Enabled { get; set; } = true;
@@ -41,7 +41,7 @@ public class HttpsSelfSignedOptions
     public bool ForceRegenerate { get; set; }
 }
 
-/// <summary>Retention/Auto-Delete Optionen (MVP2 §3).</summary>
+/// <summary>Retention / Auto-Delete Optionen.</summary>
 public class RetentionOptions
 {
     public bool Enabled { get; set; } = true;
@@ -59,12 +59,12 @@ public class SitesOptions
     /// <summary>Site-Storage-Root (Default ./sites).</summary>
     public string SitesRoot { get; set; } = "./sites";
 
-    /// <summary>Max File-Größe in Bytes auf Platte (Default 1 MB = 1048576).</summary>
+    /// <summary>Max File-Größe in Bytes für inline `content` (Default 1 MB = 1048576).</summary>
     public int MaxFileSizeBytes { get; set; } = 1_048_576;
 }
 
-/// <summary>MVP3 — `src`-Download Optionen.</summary>
-public class Mvp3Options
+/// <summary>`src`-Download Optionen (Data URL / lokaler Pfad / HTTP/HTTPS).</summary>
+public class SrcOptions
 {
     /// <summary>HTTP-Timeout in Sekunden für `src` HTTP/HTTPS Downloads. Default 30s.</summary>
     public int HttpTimeoutSeconds { get; set; } = 30;

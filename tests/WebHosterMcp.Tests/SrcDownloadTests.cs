@@ -8,16 +8,16 @@ using Xunit;
 
 namespace WebHosterMcp.Tests;
 
-public sealed class Mvp3Tests : IDisposable
+public sealed class SrcDownloadTests : IDisposable
 {
     private readonly string _tempDir;
     private readonly string _sitesRoot;
     private readonly SiteRegistry _registry;
     private readonly SiteManager _manager;
 
-    public Mvp3Tests()
+    public SrcDownloadTests()
     {
-        _tempDir = Path.Combine(Path.GetTempPath(), $"webhoster-mvp3-{Guid.NewGuid():N}");
+        _tempDir = Path.Combine(Path.GetTempPath(), $"webhoster-src-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
         _sitesRoot = Path.Combine(_tempDir, "sites");
         Directory.CreateDirectory(_sitesRoot);
@@ -117,7 +117,7 @@ public sealed class Mvp3Tests : IDisposable
             new SitesOptions { SitesRoot = _sitesRoot, MaxFileSizeBytes = 1_048_576 },
             new HostOptions { Ip = "127.0.0.1", Port = 3000 },
             null,
-            new Mvp3Options { HttpTimeoutSeconds = 5 },
+            new SrcOptions { HttpTimeoutSeconds = 5 },
             stub);
 
         var result = await manager.DeployAsync(new DeployRequest(
@@ -140,7 +140,7 @@ public sealed class Mvp3Tests : IDisposable
             new SitesOptions { SitesRoot = _sitesRoot, MaxFileSizeBytes = 1_048_576 },
             new HostOptions { Ip = "127.0.0.1", Port = 3000 },
             null,
-            new Mvp3Options { HttpTimeoutSeconds = 5 },
+            new SrcOptions { HttpTimeoutSeconds = 5 },
             stub);
 
         var result = await manager.DeployAsync(new DeployRequest(
@@ -166,7 +166,7 @@ public sealed class Mvp3Tests : IDisposable
             new SitesOptions { SitesRoot = _sitesRoot, MaxFileSizeBytes = 1_048_576 },
             new HostOptions { Ip = "127.0.0.1", Port = 3000 },
             null,
-            new Mvp3Options { HttpTimeoutSeconds = 1 },
+            new SrcOptions { HttpTimeoutSeconds = 1 },
             stub);
 
         var result = await manager.DeployAsync(new DeployRequest(
@@ -188,7 +188,7 @@ public sealed class Mvp3Tests : IDisposable
             new SitesOptions { SitesRoot = _sitesRoot, MaxFileSizeBytes = 1_048_576 },
             new HostOptions { Ip = "127.0.0.1", Port = 3000 },
             null,
-            new Mvp3Options { HttpTimeoutSeconds = 5 },
+            new SrcOptions { HttpTimeoutSeconds = 5 },
             stub);
 
         var result = await manager.DeployAsync(new DeployRequest(
@@ -214,7 +214,7 @@ public sealed class Mvp3Tests : IDisposable
             new SitesOptions { SitesRoot = _sitesRoot, MaxFileSizeBytes = 1_048_576 },
             new HostOptions { Ip = "127.0.0.1", Port = 3000 },
             null,
-            new Mvp3Options { HttpTimeoutSeconds = 5 },
+            new SrcOptions { HttpTimeoutSeconds = 5 },
             stub);
 
         var result = await manager.DeployAsync(new DeployRequest(
