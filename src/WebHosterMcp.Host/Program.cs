@@ -42,10 +42,23 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddHostedService<WebHosterMcp.Host.RetentionHostedService>();
 
 // MCP-Server (stdio)
+// The MCP C# SDK uses source-generated JSON serialization for tool parameter
+// marshalling. The SDK's built-in TypeInfoResolvers do not know the tool DTOs
+// declared in SiteTools, which would crash the server during tool registration.
+// We hand it a JsonSerializerOptions chain that combines our source-generated
+// McpToolJsonContext with the DefaultJsonTypeInfoResolver (reflection fallback).
+var mcpToolJsonOptions = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)
+{
+    WriteIndented = true,
+    TypeInfoResolver = System.Text.Json.Serialization.Metadata.JsonTypeInfoResolver.Combine(
+        WebHosterMcp.Host.McpToolJsonContext.Default,
+        new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver()),
+};
+
 builder.Services
     .AddMcpServer()
     .WithStdioServerTransport()
-    .WithTools<WebHosterMcp.Host.SiteTools>();
+    .WithTools<WebHosterMcp.Host.SiteTools>(mcpToolJsonOptions);
 
 // Kestrel listener setup (HTTP + optional HTTPS)
 var hostConfig = builder.Configuration.GetSection("Host").Get<HostOptions>() ?? new HostOptions();
@@ -78,13 +91,11 @@ app.MapGet("/", async () =>
 {
     var sites = await siteManager.ListAsync();
     var html = new StringBuilder();
-    html.Append("<!DOCTYPE html><html lang=\"de\"><head><meta charset=\"utf-8\"><title>Web Hoster — Sites</title>");
-    html.Append("<style>body{font-family:system-ui;max-width:900px;margin:2em auto;padding:0 1em;}ul{list-style:none;padding:0;}li{padding:.35em 0;display:flex;gap:1em;align-items:center;}a{text-decoration:none;color:#0066cc;}a:hover{text-decoration:underline;}span{color:#666;font-size:.9em;}button{padding:.2em .5em;}</style>");
-    html.Append("</head><body><h1>Web Hoster — Sites</h1>");
+    html.Append("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Web Hoster — Sites</title><style>").Append(ListingCss()).Append("</style></head><body><h1>Web Hoster — Sites</h1>");
 
     if (sites.Count == 0)
     {
-        html.Append("<p>Keine Sites vorhanden.</p>");
+        html.Append("<p class=\"empty\">No sites available.</p>");
     }
     else
     {
@@ -93,10 +104,10 @@ app.MapGet("/", async () =>
         {
             var count = siteManager.CountFiles(site.SitePath);
             html.Append("<li>");
-            html.Append("<a href=\"/").Append(WebUtility.UrlEncode(site.SitePath)).Append("/\">").Append(WebUtility.HtmlEncode(site.SitePath)).Append("</a>");
-            html.Append("<span>").Append(WebUtility.HtmlEncode(site.Type)).Append(" &middot; ").Append(count).Append(" Dateien</span>");
-            html.Append("<span>").Append(site.UpdatedAt.ToString("yyyy-MM-dd HH:mm")).Append("</span>");
-            html.Append("<button data-delete-site=\"").Append(WebUtility.HtmlEncode(site.SitePath)).Append("\" class=\"delete-btn\">Delete</button>");
+            html.Append("<a class=\"listing-name\" href=\"/").Append(WebUtility.UrlEncode(site.SitePath)).Append("/\">").Append(WebUtility.HtmlEncode(site.SitePath)).Append("</a>");
+            html.Append("<span class=\"meta\">").Append(WebUtility.HtmlEncode(site.Type)).Append(" &middot; ").Append(count).Append("</span>");
+            html.Append("<span class=\"meta\">").Append(site.UpdatedAt.ToString("yyyy-MM-dd HH:mm")).Append("</span>");
+            html.Append("<button type=\"button\" data-delete-site=\"").Append(WebUtility.HtmlEncode(site.SitePath)).Append("\" class=\"delete-btn\" aria-label=\"Delete site\" title=\"Delete site\">").Append(DeleteButtonIcon()).Append("</button>");
             html.Append("</li>");
         }
         html.Append("</ul>");
@@ -107,34 +118,36 @@ app.MapGet("/", async () =>
     return Results.Content(html.ToString(), "text/html; charset=utf-8");
 });
 
-// /<site> -> /<site>/
-app.MapGet("/{sitePath}", async (string sitePath) =>
-{
-    var site = await siteManager.GetAsync(sitePath);
-    if (site is null) return Results.NotFound();
-    return Results.Redirect("/" + sitePath + "/");
-});
-
 // /<site>/ -> Listing oder Renderer
 app.MapGet("/{sitePath}/", async (string sitePath) =>
 {
     var site = await siteManager.GetAsync(sitePath);
     if (site is null) return Results.NotFound();
 
-    return site.Type switch
+    try
     {
-        "files" or "folder" => Results.Content(RenderListingHtml(site, siteManager, sitesRootFullPath), "text/html; charset=utf-8"),
-        "a2ui" => Results.Content(await RenderA2uiHtml(site, siteManager), "text/html; charset=utf-8"),
-        "json-schema-form" => Results.Content(await RenderSchemaFormHtml(site, siteManager), "text/html; charset=utf-8"),
-        _ => Results.NotFound()
-    };
+        return site.Type switch
+        {
+            "files" or "folder" => Results.Content(RenderListingHtml(site, siteManager, sitesRootFullPath), "text/html; charset=utf-8"),
+            "a2ui" => Results.Content(await RenderA2uiHtml(site, siteManager), "text/html; charset=utf-8"),
+            "json-schema-form" => Results.Content(await RenderSchemaFormHtml(site, siteManager), "text/html; charset=utf-8"),
+            _ => Results.NotFound()
+        };
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Site-render failed for {SitePath} (type={Type})", sitePath, site.Type);
+        return Results.StatusCode(500);
+    }
 });
 
 // /<site>/<file> -> Static file serving (type-aware)
-app.MapGet("/{sitePath}/{**filePath}", async (string sitePath, string? filePath) =>
+// `{*filePath:regex(.+)}` requires at least one character after the trailing
+// slash. Combined with the listing route `GET /{sitePath}/` above, this keeps
+// the templates non-ambiguous for `GET /<site>/` (which would otherwise match
+// both endpoints and trip AmbiguousMatchException -> HTTP 500).
+app.MapGet("/{sitePath}/{*filePath:regex(.+)}", async (string sitePath, string filePath) =>
 {
-    if (string.IsNullOrWhiteSpace(filePath)) return Results.NotFound();
-
     var site = await siteManager.GetAsync(sitePath);
     if (site is null) return Results.NotFound();
     if (site.Type != "files" && site.Type != "folder") return Results.NotFound();
@@ -166,7 +179,7 @@ app.MapDelete("/{sitePath}", async (string sitePath) =>
 });
 
 // DELETE /<site>/<file>
-app.MapDelete("/{sitePath}/{**filePath}", async (string sitePath, string filePath) =>
+app.MapDelete("/{sitePath}/{*filePath:regex(.+)}", async (string sitePath, string filePath) =>
 {
     var deleted = await siteManager.DeleteFileAsync(sitePath, filePath);
     if (deleted != true) return Results.NotFound();
@@ -229,15 +242,13 @@ static string RenderListingHtml(SiteEntry site, SiteManager mgr, string sitesRoo
     var files = mgr.ListFiles(site.SitePath);
     var html = new StringBuilder();
 
-    html.Append("<!DOCTYPE html><html lang=\"de\"><head><meta charset=\"utf-8\">");
-    html.Append("<title>Index of /").Append(WebUtility.HtmlEncode(site.SitePath)).Append("/</title>");
-    html.Append("<style>body{font-family:system-ui;max-width:900px;margin:2em auto;padding:0 1em;}ul{list-style:none;padding:0;}li{padding:.35em 0;display:flex;gap:1em;align-items:center;}a{text-decoration:none;color:#0066cc;}a:hover{text-decoration:underline;}span{color:#666;font-size:.9em;}button{padding:.2em .5em;}</style>");
-    html.Append("</head><body>");
-    html.Append("<h1>Index of /").Append(WebUtility.HtmlEncode(site.SitePath)).Append("/</h1>");
+    html.Append("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Index of /").Append(WebUtility.HtmlEncode(site.SitePath)).Append("/</title><style>").Append(ListingCss()).Append("</style></head><body>");
+    html.Append("<header class=\"page-header\"><a class=\"back-link\" href=\"/\">&larr; All Sites</a>");
+    html.Append("<h1>Index of /").Append(WebUtility.HtmlEncode(site.SitePath)).Append("/</h1></header>");
 
     if (files.Count == 0)
     {
-        html.Append("<p>Diese Site enthält keine Dateien.</p>");
+        html.Append("<p class=\"empty\">This site contains no files.</p>");
     }
     else
     {
@@ -253,9 +264,9 @@ static string RenderListingHtml(SiteEntry site, SiteManager mgr, string sitesRoo
             var modified = File.Exists(physical) ? File.GetLastWriteTime(physical).ToString("yyyy-MM-dd HH:mm") : "-";
 
             html.Append("<li>");
-            html.Append("<a href=\"").Append(href).Append("\">").Append(WebUtility.HtmlEncode(file.Path)).Append("</a>");
-            html.Append("<span>").Append(modified).Append("</span>");
-            html.Append("<button data-delete-file=\"").Append(WebUtility.HtmlEncode(file.Path)).Append("\" data-site=\"").Append(WebUtility.HtmlEncode(site.SitePath)).Append("\" class=\"delete-btn\">Delete</button>");
+            html.Append("<a class=\"listing-name\" href=\"").Append(href).Append("\">").Append(WebUtility.HtmlEncode(file.Path)).Append("</a>");
+            html.Append("<span class=\"meta\">").Append(modified).Append("</span>");
+            html.Append("<button type=\"button\" data-delete-file=\"").Append(WebUtility.HtmlEncode(file.Path)).Append("\" data-site=\"").Append(WebUtility.HtmlEncode(site.SitePath)).Append("\" class=\"delete-btn\" aria-label=\"Delete file\" title=\"Delete file\">").Append(DeleteButtonIcon()).Append("</button>");
             html.Append("</li>");
         }
         html.Append("</ul>");
@@ -333,16 +344,140 @@ static async Task<string> ReadBodyWithCapAsync(Stream body, int maxBytes)
     return Encoding.UTF8.GetString(ms.ToArray());
 }
 
+static string ListingCss() =>
+    """
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0.75rem;
+      color: #1a1a1a;
+      background: #fafafa;
+      line-height: 1.4;
+      font-size: 16px;
+    }
+    h1 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin: 0 0 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #ddd;
+    }
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: nowrap;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 0.75rem;
+    }
+    .page-header .back-link {
+      margin: 0;
+      padding: 0;
+      flex: 0 0 auto;
+    }
+    .page-header h1 {
+      margin: 0;
+      padding: 0;
+      border: none;
+      font-size: 1.125rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    p { margin: 0.75rem 0; }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0.25rem 0;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      color: #0066cc;
+      text-decoration: none;
+    }
+    .back-link:hover, .back-link:active { text-decoration: underline; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 0.25rem 0.5rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #eee;
+    }
+    li:last-child { border-bottom: none; }
+    .listing-name {
+      font-weight: 500;
+      color: #0066cc;
+      text-decoration: none;
+      font-size: 1rem;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0;
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: left;
+    }
+    .listing-name:hover, .listing-name:active { text-decoration: underline; }
+    .meta {
+      color: #555;
+      font-size: 0.75rem;
+      flex: 0 0 auto;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .empty { color: #666; padding: 1rem 0; }
+    button {
+      padding: 0;
+      min-height: 44px;
+      min-width: 44px;
+      cursor: pointer;
+      border: 1px solid #c0c0c0;
+      background: #fff;
+      border-radius: 6px;
+      color: #555;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+    }
+    button:hover { background: #fff5f5; color: #c00; border-color: #c00; }
+    button:active { background: #ececec; }
+    button:focus-visible { outline: 2px solid #0066cc; outline-offset: 2px; }
+    button svg { display: block; }
+    @media (min-width: 640px) {
+      body { padding: 1.5rem; max-width: 900px; margin: 0 auto; }
+      h1 { font-size: 1.25rem; }
+      li { padding: 0.4rem 0; }
+      .meta { font-size: 0.85rem; }
+    }
+    """;
+
+static string DeleteButtonIcon() =>
+    """
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+    """;
+
 static string DeleteScript() =>
     """
     <script>
     document.querySelectorAll('[data-delete-site]').forEach(btn => {
       btn.onclick = async () => {
         const site = btn.dataset.deleteSite;
-        if (!confirm(`Site "${site}" wirklich löschen?`)) return;
+        if (!confirm(`Really delete site "${site}"?`)) return;
         const res = await fetch('/' + encodeURIComponent(site), { method: 'DELETE' });
         if (res.ok || res.redirected) location.href = '/';
-        else alert('Fehler: ' + res.status);
+        else alert('Error: ' + res.status);
       };
     });
 
@@ -350,12 +485,12 @@ static string DeleteScript() =>
       btn.onclick = async () => {
         const site = btn.dataset.site;
         const filePath = btn.dataset.deleteFile;
-        if (!site || !filePath) { alert('Kontext fehlt'); return; }
-        if (!confirm(`File "${filePath}" wirklich löschen?`)) return;
+        if (!site || !filePath) { alert('Context missing'); return; }
+        if (!confirm(`Really delete file "${filePath}"?`)) return;
         const encoded = filePath.split('/').map(encodeURIComponent).join('/');
         const res = await fetch('/' + encodeURIComponent(site) + '/' + encoded, { method: 'DELETE' });
         if (res.ok || res.redirected) location.href = '/' + encodeURIComponent(site) + '/';
-        else alert('Fehler: ' + res.status);
+        else alert('Error: ' + res.status);
       };
     });
     </script>

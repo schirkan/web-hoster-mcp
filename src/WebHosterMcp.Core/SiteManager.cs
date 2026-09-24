@@ -7,11 +7,11 @@ using System.Text.RegularExpressions;
 namespace WebHosterMcp.Core;
 
 /// <summary>
-/// Site-Lifecycle-Manager für MCP-Tools `deploy` (type=files), `list_sites`, `get_site_info`, `delete_site`.
-/// - Input-Validation: type/site_path/mode/type_immutable/path_traversal/path_too_long/duplicate_path/file_too_large/missing_content/invalid_file_entry
+/// Site lifecycle manager for the MCP tools `deploy` (type=files), `list_sites`, `get_site_info`, `delete_site`.
+/// - Input validation: type/site_path/mode/type_immutable/path_traversal/path_too_long/duplicate_path/file_too_large/missing_content/invalid_file_entry
 /// - Atomic file writes (tmp + File.Move overwrite)
 /// - Mode merge/replace semantics + empty-files handling
-/// - result_url uses LAN-IP if Host:Ip == 0.0.0.0
+/// - result_url uses the LAN IP if Host:Ip == 0.0.0.0
 /// </summary>
 public class SiteManager
 {
@@ -70,7 +70,7 @@ public class SiteManager
 
     // === Public API (called by MCP layer / tools) ===
 
-    /// <summary>Deploy/Update einer Site. Atomar (load + modify + save) innerhalb der Registry-Locks.</summary>
+    /// <summary>Deploy/Update of a site. Atomic (load + modify + save) inside the registry locks.</summary>
     public async Task<DeployResult> DeployAsync(DeployRequest request, CancellationToken ct = default)
     {
         // --- Validation: type & sitePath ---
@@ -182,15 +182,15 @@ public class SiteManager
         return new DeployResult(sitePath, url, resultFiles, null);
     }
 
-    /// <summary>Listet alle Sites (für `list_sites`).</summary>
+    /// <summary>Lists all sites (for `list_sites`).</summary>
     public async Task<List<SiteEntry>> ListAsync(CancellationToken ct = default)
         => await _registry.ReadAllAsync(ct);
 
-    /// <summary>Liest eine Site (für `get_site_info`).</summary>
+    /// <summary>Reads a site (for `get_site_info`).</summary>
     public async Task<SiteEntry?> GetAsync(string sitePath, CancellationToken ct = default)
         => await _registry.ReadAsync(sitePath, ct);
 
-    /// <summary>Löscht eine Site (für `delete_site`). Entfernt Registry-Eintrag UND Site-Folder.</summary>
+    /// <summary>Deletes a site (for `delete_site`). Removes the registry entry AND the site folder.</summary>
     public async Task<bool> DeleteAsync(string sitePath, CancellationToken ct = default)
     {
         var entry = await _registry.ReadAsync(sitePath, ct);
@@ -202,7 +202,7 @@ public class SiteManager
         var deleted = await _registry.DeleteAsync(sitePath, ct);
         if (!deleted) return false;
 
-        // folder-Type: nur Registry-Eintrag entfernen, Host-Folder unangetastet lassen
+        // folder type: only remove the registry entry; leave the host folder untouched
         if (string.Equals(entry.Type, "folder", StringComparison.Ordinal))
         {
             return true;
@@ -252,7 +252,7 @@ public class SiteManager
         return true;
     }
 
-    /// <summary>Zählt Files rekursiv (für file_count). Liefert bei folder-type den Host-Folder, sonst den Site-Folder.</summary>
+    /// <summary>Counts files recursively (for file_count). For folder-type returns the host folder, otherwise the site folder.</summary>
     public int CountFiles(string sitePath)
     {
         var entry = GetEntrySync(sitePath);
@@ -265,7 +265,7 @@ public class SiteManager
             : 0;
     }
 
-    /// <summary>Listet alle Files einer Site rekursiv mit relativen Pfaden + result_path URLs. Liefert bei folder-type den Host-Folder, sonst den Site-Folder.</summary>
+    /// <summary>Lists all files of a site recursively with relative paths + result_path URLs. For folder-type returns the host folder, otherwise the site folder.</summary>
     public IReadOnlyList<DeployResultFile> ListFiles(string sitePath)
     {
         var entry = GetEntrySync(sitePath);
@@ -290,12 +290,12 @@ public class SiteManager
 
     private SiteEntry? GetEntrySync(string sitePath)
     {
-        // Ensure registry is loaded (idempotent, fast no-op wenn bereits geladen)
+        // Ensure registry is loaded (idempotent, fast no-op when already loaded)
         _registry.LoadAsync().GetAwaiter().GetResult();
         return _registry.ReadAsync(sitePath).GetAwaiter().GetResult();
     }
 
-    /// <summary>Liefert den Host-Folder für folder-type, sonst den Site-Folder unter SitesRoot.</summary>
+    /// <summary>Returns the host folder for folder-type, otherwise the site folder under SitesRoot.</summary>
     private string? ResolveBaseFolder(SiteEntry entry)
     {
         if (string.Equals(entry.Type, "folder", StringComparison.Ordinal) && !string.IsNullOrEmpty(entry.Path))
@@ -303,16 +303,16 @@ public class SiteManager
         return Path.Combine(_sitesRoot, entry.SitePath);
     }
 
-    /// <summary>Liefert den Host-Folder für folder-type, sonst null.</summary>
+    /// <summary>Returns the host folder for folder-type, otherwise null.</summary>
     public string? GetHostFolderPath(SiteEntry entry)
         => string.Equals(entry.Type, "folder", StringComparison.Ordinal) && !string.IsNullOrEmpty(entry.Path)
             ? entry.Path
             : null;
 
-    /// <summary>Liefert den Site-Folder unter <SitesRoot>/<site>/ (für files/a2ui/schema-form).</summary>
+    /// <summary>Returns the site folder under <SitesRoot>/<site>/ (for files/a2ui/schema-form).</summary>
     public string GetSiteFolderPath(string sitePath) => Path.Combine(_sitesRoot, sitePath);
 
-    /// <summary>Liest payload.json (a2ui / schema-form). Null wenn nicht vorhanden.</summary>
+    /// <summary>Reads payload.json (a2ui / schema-form). Null when not present.</summary>
     public async Task<JsonElement?> GetPayloadAsync(string sitePath, CancellationToken ct = default)
     {
         var payloadPath = Path.Combine(_sitesRoot, sitePath, "payload.json");
@@ -322,7 +322,7 @@ public class SiteManager
         return await JsonSerializer.DeserializeAsync<JsonElement>(stream, cancellationToken: ct);
     }
 
-    /// <summary>Speichert einen Submission-Body. Gibt (id, receivedAt, error) zurück.</summary>
+    /// <summary>Stores a submission body. Returns (id, receivedAt, error).</summary>
     public async Task<(string SubmissionId, DateTime ReceivedAt, string? Error)> SaveSubmissionAsync(string sitePath, string body, CancellationToken ct = default)
     {
         var siteFolder = Path.Combine(_sitesRoot, sitePath);
@@ -353,7 +353,7 @@ public class SiteManager
         return (submissionId, timestamp, null);
     }
 
-    /// <summary>Listet Submissions einer json-schema-form Site (neueste zuerst).</summary>
+    /// <summary>Lists submissions of a json-schema-form site (newest first).</summary>
     public async Task<IReadOnlyList<SubmissionInfo>> GetSubmissionsAsync(string sitePath, DateTime? since, int limit, CancellationToken ct = default)
     {
         var siteFolder = Path.Combine(_sitesRoot, sitePath);
@@ -381,10 +381,10 @@ public class SiteManager
             .ToList();
     }
 
-    /// <summary>Site-Base-URL mit abschließendem '/'.</summary>
+    /// <summary>Site base URL with trailing '/'.</summary>
     public string GetSiteUrl(string sitePath) => BuildSiteUrl(sitePath);
 
-    /// <summary>Content-Type aus File-Extension.</summary>
+    /// <summary>Content type from file extension.</summary>
     public string GetContentType(string filePath)
     {
         var ext = Path.GetExtension(filePath);
@@ -435,7 +435,7 @@ public class SiteManager
         {
             var filePath = ResolveFilePath(siteFolder, f.Path);
 
-            // delete: true → merge-mode: Datei von Disk löschen; replace-mode: bereits durch clear-all gelöscht
+            // delete: true → merge-mode: delete file from disk; replace-mode: already deleted by clear-all
             if (f.Delete)
             {
                 if (File.Exists(filePath))
@@ -449,7 +449,7 @@ public class SiteManager
                 // content ist plain string, KEINE Data-URL-Sonderbehandlung
                 bytes = Encoding.UTF8.GetBytes(f.Content);
 
-                // 1 MB Limit nur für inline 'content'
+                // 1 MB limit only for inline 'content'
                 if (bytes.Length > _sitesOptions.MaxFileSizeBytes)
                 {
                     return new FileWriteResult { Error = "file_too_large" };
@@ -463,7 +463,7 @@ public class SiteManager
                     return new FileWriteResult { Error = srcResult.Error };
                 }
                 bytes = srcResult.Bytes!;
-                // kein 1 MB Limit für 'src'-Downloads
+                // no 1 MB limit for 'src' downloads
             }
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
@@ -487,11 +487,11 @@ public class SiteManager
     }
 
     /// <summary>
-    /// Löst `src` zu Bytes auf. Unterscheidet drei Quellen (case-insensitive):
+    /// Resolves `src` to bytes. Distinguishes three sources (case-insensitive):
     /// <list type="bullet">
-    /// <item><c>data:</c>-URL → <see cref="ParseDataUrl"/></item>
+    /// <item><c>data:</c> URL → <see cref="ParseDataUrl"/></item>
     /// <item><c>http://</c> / <c>https://</c> → <see cref="FetchHttpBytesAsync"/></item>
-    /// <item>sonst → lokaler Pfad (inkl. UNC)</item>
+    /// <item>otherwise → local path (incl. UNC)</item>
     /// </list>
     /// </summary>
     private async Task<(byte[] Bytes, string? Error)> ResolveSrcBytesAsync(string src, CancellationToken ct)
@@ -643,13 +643,20 @@ public class SiteManager
 
     private string BuildSiteUrl(string sitePath)
     {
-        var host = _hostOptions.Ip;
-        if (host == "0.0.0.0")
+        // Always prefer the detected LAN IPv4 so URLs are reachable from
+        // other devices on the network. Fall back to Host:Ip only if
+        // detection fails (e.g. running in a sandbox without network API).
+        var host = LanIpDetector.GetLanIpv4();
+        if (string.IsNullOrEmpty(host))
         {
-            var lan = LanIpDetector.GetLanIpv4();
-            if (!string.IsNullOrEmpty(lan)) host = lan;
+            host = _hostOptions.Ip;
         }
-        return $"http://{host}:{_hostOptions.Port}/{sitePath}/";
+        // Reflect the active binding: when UseHttps is on and HttpsPort is
+        // configured, return an https URL on the HTTPS port; otherwise http.
+        var useHttps = _hostOptions.UseHttps && _hostOptions.HttpsPort > 0;
+        var scheme = useHttps ? "https" : "http";
+        var port = useHttps ? _hostOptions.HttpsPort : _hostOptions.Port;
+        return $"{scheme}://{host}:{port}/{sitePath}/";
     }
 
     private static DeployResult ErrorResult(string code, string? sitePath = null)

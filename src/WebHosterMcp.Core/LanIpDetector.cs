@@ -4,15 +4,15 @@ using System.Net.Sockets;
 namespace WebHosterMcp.Core;
 
 /// <summary>
-/// LAN-IP-Detection: findet die erste nicht-loopback IPv4-Adresse
-/// auf einem aktiven Netzwerk-Interface. Wird für `result_path` verwendet,
-/// damit KI LAN-reichbare URLs bauen kann (statt nur 127.0.0.1).
+/// LAN-IP detection: finds the first non-loopback IPv4 address
+/// on an active network interface. Used for `result_path` so the AI
+/// can build LAN-reachable URLs (instead of just 127.0.0.1).
 /// </summary>
 public static class LanIpDetector
 {
     /// <summary>
-    /// Erste nicht-loopback, nicht-link-local IPv4-Adresse.
-    /// Null wenn keine geeignete Adresse gefunden wird (Fallback: <c>Host:Ip</c>).
+    /// First non-loopback, non-link-local IPv4 address.
+    /// Null if no suitable address is found (fallback: <c>Host:Ip</c>).
     /// </summary>
     public static string? GetLanIpv4()
     {
@@ -29,8 +29,8 @@ public static class LanIpDetector
         }
         catch
         {
-            // Network-Access kann fehlen (Sandbox, fehlende Permissions).
-            // Caller fällt auf Host:Ip zurück.
+            // Network access can fail (sandbox, missing permissions).
+            // Caller falls back to Host:Ip.
             return null;
         }
     }

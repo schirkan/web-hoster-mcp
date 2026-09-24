@@ -16,7 +16,7 @@ public sealed class SiteTools
     }
 
     [McpServerTool(Name = "deploy")]
-    [Description("Deployt/updated eine Site. mode=merge|replace (files), site_path optional. path fuer folder, payload fuer a2ui/schema-form.")]
+    [Description("Deploys or updates a site. mode=merge|replace (files); site_path optional. path for folder, payload for a2ui/json-schema-form.")]
     public async Task<DeployToolResponse> Deploy(
         string? site_path = null,
         string type = "files",
@@ -43,7 +43,7 @@ public sealed class SiteTools
     }
 
     [McpServerTool(Name = "list_sites")]
-    [Description("Listet alle Sites als RAW-Array (kein Wrapper-Objekt).")]
+    [Description("Lists all sites as a raw array (no wrapper object).")]
     public async Task<IReadOnlyList<ListSitesItem>> ListSites(CancellationToken cancellationToken = default)
     {
         var sites = await _siteManager.ListAsync(cancellationToken);
@@ -70,7 +70,7 @@ public sealed class SiteTools
     }
 
     [McpServerTool(Name = "get_site_info")]
-    [Description("Liefert Site-Details inkl. file_count, expires_at, url und files[].")]
+    [Description("Returns site details including file_count, expires_at, url, and files[].")]
     public async Task<GetSiteInfoResponse> GetSiteInfo(string site_path, CancellationToken cancellationToken = default)
     {
         var site = await _siteManager.GetAsync(site_path, cancellationToken);
@@ -102,7 +102,7 @@ public sealed class SiteTools
     }
 
     [McpServerTool(Name = "delete_site")]
-    [Description("Löscht Site-Folder + Registry-Eintrag.")]
+    [Description("Deletes the site folder and the registry entry.")]
     public async Task<DeleteSiteResponse> DeleteSite(string site_path, CancellationToken cancellationToken = default)
     {
         var deleted = await _siteManager.DeleteAsync(site_path, cancellationToken);
@@ -110,7 +110,7 @@ public sealed class SiteTools
     }
 
     [McpServerTool(Name = "get_submissions")]
-    [Description("Listet Submissions einer json-schema-form Site (neueste zuerst). Optional: since (ISO-8601), limit (default 50, max 500).")]
+    [Description("Lists submissions of a json-schema-form site (newest first). Optional: since (ISO-8601), limit (default 50, max 500).")]
     public async Task<IReadOnlyList<SubmissionInfoDto>> GetSubmissions(
         string site_path,
         string? since = null,

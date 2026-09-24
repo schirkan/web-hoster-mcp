@@ -1,9 +1,13 @@
 # MVP2 — Directory Listing
 
-Stand: 2026-09-23 · v1.3 (lock)
+Stand: 2026-09-24 · v1.7 (lock)
 
 ## Changelog
 
+- **v1.7 (2026-09-24):** Heading der File-Index-Seite ist jetzt auf einer Zeile. Back-Link (`← All Sites`) und `<h1>Index of /site/</h1>` sind in einen `<header class="page-header">` Flex-Wrapper gepackt mit `flex-wrap: nowrap; align-items: center; gap: 0.5rem`. Der `border-bottom`-Divider ist auf den Wrapper gewandert; der `<h1>`-Text ellipsiert auf extrem schmalen Viewports via `text-overflow: ellipsis`. Mobile-Touch-Target bleibt `≥44 px` (Back-Link-Höhe).
+- **v1.6 (2026-09-24):** Alle UI-Texte auf Englisch (`<html lang="en">`, Button-aria-labels/titles, Bestätigungs-Dialoge, Empty-States); Layout ist jetzt eine Full-Width-„Tabelle" mit rechtsbündigen Meta-/Button-Spalten — `.listing-name` hat `flex: 1 1 auto` (nimmt den verbleibenden Platz, linksbündig), `.meta` und Delete-Button rechtsbündig (`flex: 0 0 auto` + `text-align: right`).
+- **v1.5 (2026-09-24):** Site-Listing hat jetzt einen „← All Sites"-Backlink zur Site-Index-Seite (Klasse `.back-link`); Delete-Buttons zeigen ein Trash-Can-SVG-Icon (Feather-Style, `aria-hidden`) statt Text, mit `aria-label` + `title` für Screen-Reader und Tooltip; Single-Row-Layout auf allen Viewports — die `@media`-Row-Stack-Variante entfällt, Items bleiben immer auf einer Zeile (sehr lange Namen werden per `text-overflow: ellipsis` gekürzt).
+- **v1.4 (2026-09-24):** Mobile-Optimierung der Listings: `<meta name="viewport" content="width=device-width, initial-scale=1">`; mobile-first CSS (`<640px` Stack-Layout mit `flex-wrap: wrap`, ab `640px` Side-by-Side); Touch-Targets ≥44x44 px (Apple HIG); `:focus-visible` für Tastatur-Navigation; semantische Klassen `listing-name` / `meta` / `empty`.
 - **v1.3 (2026-09-23):** Hinweis auf Delete-Buttons via JS in MVP2 §4/§5 (statt plain GET-Links); kein `?confirm=yes`-Pattern mehr.
 - **v1.2 (2026-09-23):** Lock-Semantik-Footer.
 - **v1.1 (2026-09-22):** Type-aware Verhalten — kein Listing bei `a2ui`/`schema-form`.
@@ -40,7 +44,7 @@ Root-URL + Modified-Time + Datei-Anzahl.
 
 ```html
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>Web Hoster — Sites</title>
@@ -59,7 +63,7 @@ Root-URL + Modified-Time + Datei-Anzahl.
   <ul>
     <li>
       <a href="/demo-001/">demo-001</a>
-      <span>files · 3 Dateien</span>
+      <span>files · 3</span>
       <span>2026-09-22 16:50</span>
     </li>
     <li>
@@ -86,7 +90,7 @@ MVP4-Render-Pipeline.
 
 ```html
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>Index of /demo-001/</title>
@@ -119,18 +123,18 @@ Identische Struktur, aber Files kommen aus `<host-path>/` statt
 
 ## Empty States
 
-**Site-Listing ohne Files:**
+**Site-Listing without files:**
 
 ```html
 <h1>Index of /demo-001/</h1>
-<p>Diese Site enthält keine Dateien.</p>
+<p>This site contains no files.</p>
 ```
 
-**Sites-Index ohne Sites:**
+**Sites-Index without sites:**
 
 ```html
 <h1>Web Hoster — Sites</h1>
-<p>Keine Sites vorhanden.</p>
+<p>No sites available.</p>
 ```
 
 ## Eigenschaften

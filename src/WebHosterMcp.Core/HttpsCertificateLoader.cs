@@ -11,7 +11,7 @@ public static class HttpsCertificateLoader
     {
         var certPassword = httpsOptions.CertPassword ?? string.Empty;
 
-        // 1) Manuelles PFX
+        // 1) Manual PFX
         if (!string.IsNullOrWhiteSpace(httpsOptions.CertPath))
         {
             var pfxPath = ResolvePath(httpsOptions.CertPath!, contentRoot);
@@ -28,7 +28,7 @@ public static class HttpsCertificateLoader
             }
         }
 
-        // 2) Self-Signed Fallback
+        // 2) Self-signed fallback
         if (httpsOptions.SelfSigned.Enabled)
         {
             try
@@ -41,7 +41,7 @@ public static class HttpsCertificateLoader
             }
         }
 
-        // 3) Kein HTTPS-Zertifikat verfügbar
+        // 3) No HTTPS certificate available
         throw new InvalidOperationException("https_startup_failed");
     }
 

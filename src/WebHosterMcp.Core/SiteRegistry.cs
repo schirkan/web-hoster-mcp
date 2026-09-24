@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace WebHosterMcp.Core;
 
 /// <summary>
-/// registry.json Schema v1.
+/// registry.json schema v1.
 /// </summary>
 public class Registry
 {
@@ -12,7 +12,7 @@ public class Registry
 }
 
 /// <summary>
-/// Einzelner Site-Eintrag. timestamps = lokale Server-Zeit (DateTime.Now, ISO-8601 ohne 'Z').
+/// Single site entry. timestamps = local server time (DateTime.Now, ISO-8601 without 'Z').
 /// </summary>
 public class SiteEntry
 {
@@ -25,10 +25,10 @@ public class SiteEntry
 }
 
 /// <summary>
-/// Persistenz-Schicht für registry.json.
-/// - Atomic writes via tmp + File.Move(overwrite) (kein Half-State auf Disk)
-/// - SemaphoreSlim-Mutex (eine Schreib-Operation zur Zeit)
-/// - FileShare.Read für parallele Lesezugriffe während eines Writes
+/// Persistence layer for registry.json.
+/// - Atomic writes via tmp + File.Move(overwrite) (no half-state on disk)
+/// - SemaphoreSlim mutex (one write operation at a time)
+/// - FileShare.Read for concurrent reads during a write
 /// - snake_case JSON via PropertyNamingPolicy.SnakeCaseLower
 /// </summary>
 public class SiteRegistry
@@ -42,7 +42,7 @@ public class SiteRegistry
         _path = path;
     }
 
-    /// <summary>Lädt registry.json von Disk in den Speicher (idempotent, leer wenn nicht vorhanden).</summary>
+    /// <summary>Loads registry.json from disk into memory (idempotent, empty when not present).</summary>
     public async Task LoadAsync(CancellationToken ct = default)
     {
         await _lock.WaitAsync(ct);
@@ -56,7 +56,7 @@ public class SiteRegistry
         }
     }
 
-    /// <summary>Schreibt den aktuellen Speicherzustand atomar nach registry.json.</summary>
+    /// <summary>Writes the current in-memory state atomically to registry.json.</summary>
     public async Task SaveAsync(CancellationToken ct = default)
     {
         await _lock.WaitAsync(ct);
@@ -71,8 +71,8 @@ public class SiteRegistry
     }
 
     /// <summary>
-    /// Deploy/Update einer Site (atomic: load + modify + save unter Lock).
-    /// Legt neu an oder aktualisiert bestehend. Erhält CreatedAt bei Update.
+    /// Deploy/Update of a site (atomic: load + modify + save under lock).
+    /// Creates a new entry or updates an existing one. Preserves CreatedAt on update.
     /// </summary>
     public async Task<SiteEntry> DeployAsync(SiteEntry newEntry, CancellationToken ct = default)
     {
@@ -99,7 +99,7 @@ public class SiteRegistry
         }
     }
 
-    /// <summary>Löscht eine Site (atomic: load + remove + save). Returns true wenn Site existierte.</summary>
+    /// <summary>Deletes a site (atomic: load + remove + save). Returns true if the site existed.</summary>
     public async Task<bool> DeleteAsync(string sitePath, CancellationToken ct = default)
     {
         await _lock.WaitAsync(ct);
@@ -116,7 +116,7 @@ public class SiteRegistry
         }
     }
 
-    /// <summary>Liest einen Site-Eintrag (null wenn nicht vorhanden). Auto-loadet von Disk.</summary>
+    /// <summary>Reads a site entry (null if not present). Auto-loads from disk.</summary>
     public async Task<SiteEntry?> ReadAsync(string sitePath, CancellationToken ct = default)
     {
         await _lock.WaitAsync(ct);
@@ -131,7 +131,7 @@ public class SiteRegistry
         }
     }
 
-    /// <summary>Liest alle Site-Einträge als Snapshot (kopiert die Values).</summary>
+    /// <summary>Reads all site entries as a snapshot (copies the values).</summary>
     public async Task<List<SiteEntry>> ReadAllAsync(CancellationToken ct = default)
     {
         await _lock.WaitAsync(ct);
@@ -146,7 +146,7 @@ public class SiteRegistry
         }
     }
 
-    // === Private Helpers — MÜSSEN unter _lock aufgerufen werden ===
+    // === Private helpers — MUST be called under _lock ===
 
     private async Task LoadFromDiskAsync(CancellationToken ct)
     {
