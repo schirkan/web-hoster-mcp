@@ -26,7 +26,8 @@ Stand: 2026-09-24 (10:25)
 - [x] LICENSE (MIT) hinzugefügt
 - [x] `_archive/` Ordner entfernt
 - [x] README.md mit allen Spec-Versionen (MVP1 v1.3, MVP2 v1.3, MVP2-Listing v1.3, MVP3 v1.1, MVP4 v2.2)
-- [x] Workboard `web-hoster-mcp` aktiv gepflegt (26 Karten, **8 done**)
+- [x] Workboard `web-hoster-mcp` aktiv gepflegt (26 Karten, **24 done** + 2 backlog)
+- [x] Stale MVP2/MVP3-Karten nachträglich als done geschlossen (Code war bereits in Commits `fe6bbad`/`b1afdeb` enthalten): `d1dbec46`, `4c858484`, `775a5686`, `a65169c7` (MVP2) und `e177237e`, `959769fe`, `f32fb8a0` (MVP3)
 - [x] MVP1 vollständig implementiert (Karten 1-7 = done)
 - [x] Neu in Code: `SiteTools` (`deploy`, `list_sites`, `get_site_info`, `delete_site`), Static File Serving Route, E2E-Tests
 - [x] MVP2 in Code implementiert: HTTPS-Listener (PFX/Self-Signed), Retention-Background-Service, HTTP-DELETE-Endpunkte + Delete-Buttons in Listings
@@ -68,7 +69,7 @@ Stand: 2026-09-24 (10:25)
 Board-ID: `web-hoster-mcp` (= Projektordner-Name)
 Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 
-**Stats:** 26 Karten — 17 done + 7 backlog + 2 todo (MVP1: 7 done, MVP2: 1 done + 5 backlog, MVP3: 4 backlog, MVP4: 9 done)
+**Stats:** 26 Karten — 24 done + 2 backlog (MVP1: 7 done, MVP2: 5 done + 1 backlog, MVP3: 3 done + 1 backlog, MVP4: 9 done)
 
 ### MVP1 — Base (7 Karten)
 
@@ -84,23 +85,23 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 
 ### MVP2 — HTTPS + Retention + Delete-Endpoints (6 Karten)
 
-| ID | Titel | Priorität |
-|----|-------|-----------|
-| 6a49c9ad | MVP2-Spec: HTTPS + Retention + Delete-Endpoints schreiben | high — **done** (Commit dd55944) |
-| d1dbec46 | HTTPS-Endpoint + Cert-Loading (PFX + Self-Signed Fallback) | normal |
-| 4c858484 | Retention-Background-Service (TTL + Auto-Delete) | normal |
-| 775a5686 | HTTP-Delete-Endpoints (DELETE-Methode) — kein Confirm-Pattern | normal |
-| a65169c7 | Delete-Buttons in Directory-Listings (JS + DELETE) | normal |
-| c2a52cad | E2E-Test MVP2 (HTTPS + TTL + Delete-Links) | high |
+| ID | Titel | Priorität | Status |
+|----|-------|-----------|--------|
+| 6a49c9ad | MVP2-Spec: HTTPS + Retention + Delete-Endpoints schreiben | high | ✅ done (Commit dd55944) |
+| d1dbec46 | HTTPS-Endpoint + Cert-Loading (PFX + Self-Signed Fallback) | normal | ✅ done (Commit fe6bbad) |
+| 4c858484 | Retention-Background-Service (TTL + Auto-Delete) | normal | ✅ done (Commit fe6bbad) |
+| 775a5686 | HTTP-Delete-Endpoints (DELETE-Methode) — kein Confirm-Pattern | normal | ✅ done (Commit fe6bbad) |
+| a65169c7 | Delete-Buttons in Directory-Listings (JS + DELETE) | normal | ✅ done (Commit fe6bbad) |
+| c2a52cad | E2E-Test MVP2 (HTTPS + TTL + Delete-Links) | high | 🔲 backlog |
 
 ### MVP3 — Per-File src (4 Karten)
 
-| ID | Titel | Priorität |
-|----|-------|-----------|
-| e177237e | src-Field + Trust-Model (Data URL / local / HTTP) | normal |
-| 959769fe | Path-Read + HTTP-Download + Data-URL-Decode + Content-Storage | normal |
-| f32fb8a0 | Integration src in deploy-Tool (MVP1 Validation erweitern) | normal |
-| 23efd0b1 | E2E-Test MVP3 (data-URL / local / HTTP) | normal |
+| ID | Titel | Priorität | Status |
+|----|-------|-----------|--------|
+| e177237e | src-Field + Trust-Model (Data URL / local / HTTP) | normal | ✅ done (Commit b1afdeb) |
+| 959769fe | Path-Read + HTTP-Download + Data-URL-Decode + Content-Storage | normal | ✅ done (Commit b1afdeb) |
+| f32fb8a0 | Integration src in deploy-Tool (MVP1 Validation erweitern) | normal | ✅ done (Commit b1afdeb) |
+| 23efd0b1 | E2E-Test MVP3 (data-URL / local / HTTP) | normal | 🔲 backlog |
 
 ### MVP4 — Hosting Typen (9 Karten)
 
