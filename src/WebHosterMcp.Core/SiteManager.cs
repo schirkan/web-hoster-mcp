@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Text.Json.Serialization.Metadata;
 
 namespace WebHosterMcp.Core;
 
@@ -319,8 +320,17 @@ public class SiteManager
         if (!File.Exists(payloadPath)) return null;
 
         await using var stream = File.OpenRead(payloadPath);
-        return await JsonSerializer.DeserializeAsync<JsonElement>(stream, cancellationToken: ct);
+        return await JsonSerializer.DeserializeAsync<JsonElement>(stream, PayloadJsonOptions, ct);
     }
+
+    // Reflection-based JSON is disabled under PublishTrimmed=true. The static
+    // DeserializeAsync<JsonElement> / SerializeToUtf8Bytes paths require an
+    // explicit TypeInfoResolver. DefaultJsonTypeInfoResolver is enough for the
+    // open payload schema used by a2ui and json-schema-form sites.
+    private static readonly JsonSerializerOptions PayloadJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver()
+    };
 
     /// <summary>Stores a submission body. Returns (id, receivedAt, error).</summary>
     public async Task<(string SubmissionId, DateTime ReceivedAt, string? Error)> SaveSubmissionAsync(string sitePath, string body, CancellationToken ct = default)
@@ -615,7 +625,7 @@ public class SiteManager
         Directory.CreateDirectory(siteFolder);
         var payloadPath = Path.Combine(siteFolder, "payload.json");
 
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(payload);
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(payload, PayloadJsonOptions);
         if (bytes.Length > _sitesOptions.MaxPayloadSizeBytes)
             return "payload_too_large";
 
@@ -643,13 +653,20 @@ public class SiteManager
 
     private string BuildSiteUrl(string sitePath)
     {
-        // Always prefer the detected LAN IPv4 so URLs are reachable from
-        // other devices on the network. Fall back to Host:Ip only if
-        // detection fails (e.g. running in a sandbox without network API).
-        var host = LanIpDetector.GetLanIpv4();
-        if (string.IsNullOrEmpty(host))
+        // Resolution order:
+        //   1) If Host:Ip is the bind-any sentinel (0.0.0.0 / :: / empty),
+        //      use the auto-detected LAN IPv4 so URLs are reachable from
+        //      other devices on the network (production case via appsettings.json).
+        //   2) Otherwise honor Host:Ip verbatim (e.g. 127.0.0.1 in tests,
+        //      or a specific IP set by an operator).
+        // Without this guard, LanIpDetector would override Host:Ip on a
+        // GitHub Actions Windows runner (which has a non-loopback adapter
+        // IP), breaking SiteToolsTests.ListSites_ReturnsRawArrayWithExpectedFields.
+        var host = _hostOptions.Ip;
+        if (string.IsNullOrEmpty(host) || host == "0.0.0.0" || host == "::")
         {
-            host = _hostOptions.Ip;
+            var lan = LanIpDetector.GetLanIpv4();
+            if (!string.IsNullOrEmpty(lan)) host = lan;
         }
         // Reflect the active binding: when UseHttps is on and HttpsPort is
         // configured, return an https URL on the HTTPS port; otherwise http.

@@ -20,6 +20,17 @@ builder.Services.Configure<RetentionOptions>(builder.Configuration.GetSection("R
 builder.Services.Configure<SitesOptions>(builder.Configuration);
 builder.Services.Configure<SrcOptions>(builder.Configuration.GetSection("Src"));
 
+// Reflection-based JSON serialization is disabled under PublishTrimmed=true.
+// Wire ASP.NET Core's default HTTP JSON pipeline to a runtime TypeInfoResolver
+// so Results.Json(...) calls (anonymous error envelopes, ad-hoc site info responses)
+// keep working in the trimmed single-file build.
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.TypeInfoResolver =
+        System.Text.Json.Serialization.Metadata.JsonTypeInfoResolver.Combine(
+            new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver());
+});
+
 // Core-Services
 builder.Services.AddSingleton(sp =>
 {
@@ -194,26 +205,22 @@ app.MapPost("/{sitePath}/submit", async (string sitePath, HttpContext ctx) =>
 
     if (!string.Equals(site.Type, "json-schema-form", StringComparison.Ordinal))
     {
-        return Results.Json(new { error = "submit_not_allowed" }, statusCode: 400);
+        return Results.Json(new ErrorEnvelope("submit_not_allowed"), statusCode: 400);
     }
 
     var body = await ReadBodyWithCapAsync(ctx.Request.Body, sitesOptions.MaxSubmissionSizeBytes);
     if (body.Length > sitesOptions.MaxSubmissionSizeBytes)
     {
-        return Results.Json(new { error = "submission_too_large" }, statusCode: 400);
+        return Results.Json(new ErrorEnvelope("submission_too_large"), statusCode: 400);
     }
 
     var result = await siteManager.SaveSubmissionAsync(sitePath, body);
     if (result.Error != null)
     {
-        return Results.Json(new { error = result.Error }, statusCode: 400);
+        return Results.Json(new ErrorEnvelope(result.Error!), statusCode: 400);
     }
 
-    return Results.Json(new
-    {
-        submission_id = result.SubmissionId,
-        received_at = result.ReceivedAt.ToString("yyyy-MM-ddTHH:mm:ss")
-    });
+    return Results.Json(new SubmitEnvelope(result.SubmissionId, result.ReceivedAt.ToString("yyyy-MM-ddTHH:mm:ss")));
 });
 
 var lanIp = LanIpDetector.GetLanIpv4();
@@ -283,18 +290,26 @@ static async Task<string> RenderA2uiHtml(SiteEntry site, SiteManager mgr)
     var payloadJson = payload.HasValue ? payload.Value.GetRawText() : "null";
 
     var html = new StringBuilder();
-    html.Append("<!DOCTYPE html><html lang=\"de\"><head><meta charset=\"utf-8\">");
+    html.Append("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">");
     html.Append("<title>").Append(WebUtility.HtmlEncode(site.SitePath)).Append("</title>");
-    html.Append("<script crossorigin src=\"https://unpkg.com/react@18/umd/react.production.min.js\"></script>");
-    html.Append("<script crossorigin src=\"https://unpkg.com/react-dom@18/umd/react-dom.production.min.js\"></script>");
-    html.Append("<script crossorigin src=\"https://unpkg.com/@a2ui/react@0.9.1/dist/index.js\"></script>");
+    html.Append("<script type=\"importmap\">");
+    html.Append("{\"imports\":{");
+    html.Append("\"react\":\"https://esm.sh/react@18\",");
+    html.Append("\"react/jsx-runtime\":\"https://esm.sh/react@18/jsx-runtime\",");
+    html.Append("\"react-dom/client\":\"https://esm.sh/react-dom@18/client\",");
+    html.Append("\"@a2ui/react\":\"https://esm.sh/@a2ui/react@0.11.1\"");
+    html.Append("}}");
+    html.Append("</script>");
     html.Append("<style>body{font-family:system-ui;max-width:800px;margin:2em auto;padding:0 1em;}</style>");
     html.Append("</head><body><div id=\"root\"></div><script>");
     html.Append("const SITE = { site_path: \"").Append(EscapeJs(site.SitePath)).Append("\", type: \"a2ui\", payload: ").Append(payloadJson).Append(" };");
-    html.Append("const root = ReactDOM.createRoot(document.getElementById('root'));");
-    html.Append("const Renderer = (window.A2UIReactRenderer && (window.A2UIReactRenderer.default || window.A2UIReactRenderer.A2UIRenderer || window.A2UIReactRenderer));");
-    html.Append("if (Renderer) { root.render(React.createElement(Renderer, { messages: SITE.payload.messages || [] })); }");
-    html.Append("else { root.render(React.createElement('pre', null, JSON.stringify(SITE.payload, null, 2))); }");
+    html.Append("</script>");
+    html.Append("<script type=\"module\">");
+    html.Append("import React from 'react';");
+    html.Append("import { createRoot } from 'react-dom/client';");
+    html.Append("import { A2UIRenderer } from '@a2ui/react';");
+    html.Append("const root = createRoot(document.getElementById('root'));");
+    html.Append("root.render(React.createElement(A2UIRenderer, { messages: SITE.payload.messages || [] }));");
     html.Append("</script></body></html>");
     return html.ToString();
 }
@@ -305,24 +320,34 @@ static async Task<string> RenderSchemaFormHtml(SiteEntry site, SiteManager mgr)
     var payloadJson = payload.HasValue ? payload.Value.GetRawText() : "null";
 
     var html = new StringBuilder();
-    html.Append("<!DOCTYPE html><html lang=\"de\"><head><meta charset=\"utf-8\">");
+    html.Append("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">");
     html.Append("<title>").Append(WebUtility.HtmlEncode(site.SitePath)).Append("</title>");
-    html.Append("<script crossorigin src=\"https://unpkg.com/react@18/umd/react.production.min.js\"></script>");
-    html.Append("<script crossorigin src=\"https://unpkg.com/react-dom@18/umd/react-dom.production.min.js\"></script>");
-    html.Append("<script crossorigin src=\"https://unpkg.com/@rjsf/core@5/dist/index.js\"></script>");
+    html.Append("<script type=\"importmap\">");
+    html.Append("{\"imports\":{");
+    html.Append("\"react\":\"https://esm.sh/react@18\",");
+    html.Append("\"react/jsx-runtime\":\"https://esm.sh/react@18/jsx-runtime\",");
+    html.Append("\"react-dom/client\":\"https://esm.sh/react-dom@18/client\",");
+    html.Append("\"@rjsf/core\":\"https://esm.sh/@rjsf/core@5\",");
+    html.Append("\"@rjsf/utils\":\"https://esm.sh/@rjsf/utils@5\",");
+    html.Append("\"@rjsf/validator-ajv8\":\"https://esm.sh/@rjsf/validator-ajv8@5\"");
+    html.Append("}}");
+    html.Append("</script>");
     html.Append("<style>body{font-family:system-ui;max-width:800px;margin:2em auto;padding:0 1em;}</style>");
     html.Append("</head><body><div id=\"root\"></div><script>");
     html.Append("const SITE = { site_path: \"").Append(EscapeJs(site.SitePath)).Append("\", type: \"json-schema-form\", payload: ").Append(payloadJson).Append(" };");
-    html.Append("const root = ReactDOM.createRoot(document.getElementById('root'));");
+    html.Append("</script>");
+    html.Append("<script type=\"module\">");
+    html.Append("import React from 'react';");
+    html.Append("import { createRoot } from 'react-dom/client';");
+    html.Append("import Form from '@rjsf/core';");
+    html.Append("const root = createRoot(document.getElementById('root'));");
     html.Append("function onSubmit(args) {");
     html.Append("  const data = (args && args.formData) || args;");
     html.Append("  fetch('/' + SITE.site_path + '/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })");
-    html.Append("    .then(r => r.ok ? alert('Eingereicht!') : alert('Fehler: ' + r.status));");
+    html.Append("    .then(r => r.ok ? alert('Submitted!') : alert('Error: ' + r.status));");
     html.Append("  if (args && typeof args.preventDefault === 'function') args.preventDefault();");
     html.Append("}");
-    html.Append("const Form = (window.JSONSchemaForm && (window.JSONSchemaForm.default || window.JSONSchemaForm));");
-    html.Append("if (Form) { root.render(React.createElement(Form, { schema: SITE.payload.schema || {}, formData: SITE.payload.data, onSubmit: onSubmit })); }");
-    html.Append("else { root.render(React.createElement('pre', null, JSON.stringify(SITE.payload, null, 2))); }");
+    html.Append("root.render(React.createElement(Form, { schema: SITE.payload.schema || {}, formData: SITE.payload.data, onSubmit: onSubmit }));");
     html.Append("</script></body></html>");
     return html.ToString();
 }
@@ -496,4 +521,13 @@ static string DeleteScript() =>
     </script>
     """;
 
+
+// JSON-Envelope-Records (named types): unter PublishTrimmed=true werden
+// Parameter-Names von anonymen Typen durch ILLink gestrippt, was
+// DefaultJsonTypeInfoResolver beim Erstellen der JsonTypeInfo in einen
+// NotSupportedException laufen laesst (parameters with null names).
+// Benannte Records umgehen das, weil ihre Konstruktor-Parameter vom
+// Compiler fest in der Metadata-Tabelle eingetragen werden.
+public record ErrorEnvelope(string error);
+public record SubmitEnvelope(string submission_id, string received_at);
 public partial class Program { }

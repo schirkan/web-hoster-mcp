@@ -1,9 +1,11 @@
 # MVP4 — Hosting Typen
 
-Stand: 2026-09-23 · v2.2 (lock)
+Stand: 2026-09-24 · v2.4 (lock)
 
 ## Changelog
 
+- **v2.4 (2026-09-24):** (1) A2UI + RJSF Renderer migriert von UMD-CDN auf ESM via `<script type="importmap">` + `esm.sh`. (a) `@a2ui/react@0.11.1` hat kein UMD-Bundle mehr unter `dist/index.js` (404); vorher luden wir `https://unpkg.com/@a2ui/react@0.9.1/dist/index.js` als `<script>` und hofften auf `window.A2UIReactRenderer` — der Global war nicht definiert, also fiel der Render-Pfad auf `<pre>{JSON}</pre>` zurück (User sah: "rendert nur das json"). (b) `@rjsf/core@5/dist/index.js` ist CommonJS (`module.exports`, `__create`, `__defProp` …) — als `<script>` wirft es im Browser sofort (`module`/`exports` undefiniert in Browser-Sandbox), der Render brach vor der Fallback-Verzweigung ab und die Seite blieb leer (User sah: "rendert leere Seite"). Fix: `<script type="importmap">` mappt `react`/`react-dom/client`/`react/jsx-runtime`/`@a2ui/react`/`@rjsf/core`/`@rjsf/utils`/`@rjsf/validator-ajv8` auf `https://esm.sh/...`-URLs; ein `<script type="module">` macht dann `import React from 'react'; import { createRoot } from 'react-dom/client'; import { A2UIRenderer } from '@a2ui/react';` bzw. `import Form from '@rjsf/core';` und rendert direkt. `<html lang="de">` → `<html lang="en">` (war Spec-Drift seit v1.6). (2) `Program.cs` registriert via `builder.Services.ConfigureHttpJsonOptions` einen `DefaultJsonTypeInfoResolver` für die ASP.NET-Core-HTTP-JSON-Pipeline, sodass `Results.Json(...)` mit anonymen Typen (Error-Envelopes, Submit-Response) im `PublishTrimmed=true`-Build weiter funktioniert (ohne den Fix knallt `POST /<site>/submit` mit HTTP 500 + `NotSupportedException: JsonTypeInfo metadata for type '<>f__AnonymousType1<...>' was not provided`).
+- **v2.3 (2026-09-24):** `SiteManager.GetPayloadAsync` und `SiteManager.WritePayloadAsync` verwenden jetzt `JsonSerializerOptions` mit explizitem `TypeInfoResolver = new DefaultJsonTypeInfoResolver()`. Hintergrund: unter `PublishTrimmed=true` ist Reflection-basierte JSON-Serialisierung im .NET 8 Single-File-Build standardmäßig deaktiviert; der bisherige `JsonSerializer.DeserializeAsync<JsonElement>(stream, cancellationToken: ct)`-Aufruf knallte beim Rendering jeder `a2ui`/`json-schema-form`-Site mit HTTP 500 und `InvalidOperationException: Reflection-based serialization has been disabled`. Fix: `PayloadJsonOptions` als static readonly-Feld mit `DefaultJsonTypeInfoResolver`, analog zum MCP-Tool-Bootstrap in `Program.cs`.
 - **v2.2 (2026-09-23):** Path-Validation analog MVP1 (`..` nicht erlaubt, max 260 Zeichen). UNC-Pfade für `folder` erlaubt. `file_count` analog für `files` und `folder` über Filesystem-Operation. 1 MB Limit für `payload.json` (a2ui, schema-form) und Submission-Body (neue Error-Codes `payload_too_large`, `submission_too_large`). NPM-Link für A2UI-React-Renderer. `folder`-Retention-Expiry: Registry-Eintrag weg, Host-Folder bleibt; bei Re-Deploy werden `path` und `updated_at` neu gesetzt.
 - **v2.1 (2026-09-23):** A2UI via offiziellen React-Renderer (`@a2ui/react` von npmjs); Lock-Semantik-Footer.
 - **v2.0 (2026-09-22):** `render_type` → `type` (Umbenennung, `type_immutable`), `folder`-Type neu mit Subfolder-Support.
@@ -210,41 +212,39 @@ extern im Host-Folder, der Server liest nur (kein Copy).
 
 ## React-basierte Render-Pipeline (für `a2ui` und `json-schema-form`)
 
-Eine HTML-Template, mit Mount-Script pro Type:
+Die Renderer werden seit v2.4 über **ESM + `<script type="importmap">`** geladen
+(vorher UMD via `<script crossorigin>`, was aber bei modernen npm-Paketen ohne
+UMD-Bundle nicht mehr funktioniert — siehe v2.4-Changelog). Importmap mappt
+Bare-Specifier auf `https://esm.sh/...`-URLs:
 
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>{site_path}</title>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <!-- Renderer je nach type -->
-  <script crossorigin src="...rjsf..."></script>           <!-- schema-form -->
-  <script crossorigin src="...a2ui-react..."></script>    <!-- a2ui -->
-</head>
-<body>
-  <div id="root"></div>
-  <script>
-    const SITE = /* server-side injected JSON */;
-    /* mount je nach SITE.type */
-  </script>
-</body>
-</html>
+```json
+{
+  "imports": {
+    "react": "https://esm.sh/react@18",
+    "react/jsx-runtime": "https://esm.sh/react@18/jsx-runtime",
+    "react-dom/client": "https://esm.sh/react-dom@18/client",
+    "@a2ui/react": "https://esm.sh/@a2ui/react@0.11.1",
+    "@rjsf/core": "https://esm.sh/@rjsf/core@5",
+    "@rjsf/utils": "https://esm.sh/@rjsf/utils@5",
+    "@rjsf/validator-ajv8": "https://esm.sh/@rjsf/validator-ajv8@5"
+  }
+}
 ```
+
+Danach ein `<script type="module">` mit `import`-Statements, der die Komponente
+mountet (`A2UIRenderer` für a2ui, `Form` für json-schema-form).
 
 ### A2UI Mount
 
 - Mountet den A2UI-React-Renderer mit `SITE.payload.messages`
 - Spec: A2UI **v0.9.1** (current) — `https://a2ui.org/specification/v0.9.1-a2ui/`
-- **Renderer:** offizieller React-Renderer [`@a2ui/react`](https://www.npmjs.com/package/@a2ui/react) via CDN geladen
+- **Renderer:** offizieller React-Renderer [`@a2ui/react`](https://www.npmjs.com/package/@a2ui/react) v0.11.1 (latest) via `https://esm.sh/@a2ui/react@0.11.1` (liefert einen gebündelten ESM-Build)
 
 ### JSON-Schema-Form Mount
 
 - Mountet `@rjsf/core` mit `SITE.payload.schema` (+ `data`)
 - Submit-Button POSTet JSON an `/<site>/submit`
-- Renderer: [`react-jsonschema-form`](https://github.com/rjsf-team/react-jsonschema-form) (RJSF) via CDN
+- Renderer: [`react-jsonschema-form`](https://github.com/rjsf-team/react-jsonschema-form) (RJSF) v5 via `https://esm.sh/@rjsf/core@5` (liefert einen gebündelten ESM-Build inkl. `@rjsf/utils` und `@rjsf/validator-ajv8`)
 
 ## Submit-Endpoint
 

@@ -22,7 +22,9 @@ public sealed class SiteToolsTests : IDisposable
         var manager = new SiteManager(
             registry,
             new SitesOptions { SitesRoot = _sitesRoot, MaxFileSizeBytes = 1_048_576 },
-            new HostOptions { Ip = "127.0.0.1", Port = 3000 });
+            // UseHttps = false: HostOptions defaults UseHttps to true for production,
+            // but the test explicitly wants the legacy http://127.0.0.1:3000/ URL shape.
+            new HostOptions { Ip = "127.0.0.1", Port = 3000, UseHttps = false });
 
         _tools = new SiteTools(manager);
     }

@@ -94,3 +94,8 @@ PublishProfiles/
 *.pfx
 *.p12
 *.key
+
+# Backup files (created during refactors)
+*.bak
+*.bak.*
+
