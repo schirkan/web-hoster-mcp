@@ -220,7 +220,8 @@ app.MapPost("/{sitePath}/submit", async (string sitePath, HttpContext ctx) =>
         return Results.Json(new ErrorEnvelope(result.Error!), statusCode: 400);
     }
 
-    return Results.Json(new SubmitEnvelope(result.SubmissionId, result.ReceivedAt.ToString("yyyy-MM-ddTHH:mm:ss")));
+    var envelope = new SubmitEnvelope(result.SubmissionId, result.ReceivedAt.ToString("yyyy-MM-ddTHH:mm:ss"));
+    return Results.Content(System.Text.Json.JsonSerializer.Serialize(envelope, SubmitJsonContext.Default.SubmitEnvelope), "application/json; charset=utf-8");
 });
 
 var lanIp = LanIpDetector.GetLanIpv4();
@@ -294,22 +295,36 @@ static async Task<string> RenderA2uiHtml(SiteEntry site, SiteManager mgr)
     html.Append("<title>").Append(WebUtility.HtmlEncode(site.SitePath)).Append("</title>");
     html.Append("<script type=\"importmap\">");
     html.Append("{\"imports\":{");
-    html.Append("\"react\":\"https://esm.sh/react@18\",");
-    html.Append("\"react/jsx-runtime\":\"https://esm.sh/react@18/jsx-runtime\",");
-    html.Append("\"react-dom/client\":\"https://esm.sh/react-dom@18/client\",");
+    html.Append("\"react\":\"https://esm.sh/react@19\",");
+    html.Append("\"react/jsx-runtime\":\"https://esm.sh/react@19/jsx-runtime\",");
+    html.Append("\"react-dom/client\":\"https://esm.sh/react-dom@19/client\",");
     html.Append("\"@a2ui/react\":\"https://esm.sh/@a2ui/react@0.11.1\"");
     html.Append("}}");
     html.Append("</script>");
-    html.Append("<style>body{font-family:system-ui;max-width:800px;margin:2em auto;padding:0 1em;}</style>");
+    html.Append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
+    html.Append("<style>body{font-family:system-ui;max-width:800px;margin:2em auto;padding:0 1em;}@media(max-width:600px){body{margin:1em auto;padding:0 0.5em;}div,p{margin:0.5em 0;}hr{margin:1em 0;}div[style*='border:1px solid #ddd']{margin:0.5em 0;padding:0.75em;}div[style*='border:1px solid #ddd'] h3{font-size:1rem;margin:0 0 0.5em;}button{min-height:44px;padding:0.75em 1em;font-size:1rem;width:100%;box-sizing:border-box;}}</style>");
     html.Append("</head><body><div id=\"root\"></div><script>");
     html.Append("const SITE = { site_path: \"").Append(EscapeJs(site.SitePath)).Append("\", type: \"a2ui\", payload: ").Append(payloadJson).Append(" };");
     html.Append("</script>");
     html.Append("<script type=\"module\">");
     html.Append("import React from 'react';");
     html.Append("import { createRoot } from 'react-dom/client';");
-    html.Append("import { A2UIRenderer } from '@a2ui/react';");
-    html.Append("const root = createRoot(document.getElementById('root'));");
-    html.Append("root.render(React.createElement(A2UIRenderer, { messages: SITE.payload.messages || [] }));");
+    html.Append("const __byId=new Map((SITE.payload.messages||[]).map(m=>[m.id,m]));");
+    html.Append("const __kids=new Set();(SITE.payload.messages||[]).forEach(m=>(m.children||[]).forEach(c=>__kids.add(c)));");
+    html.Append("const __top=SITE.payload.messages.filter(m=>!__kids.has(m.id));");
+    html.Append("const __root=document.getElementById('root');");
+    html.Append("function __build(m){const c=m.component.type,p=m.component.props||{};let el;");
+    html.Append("if(c==='Text'){el=document.createElement('p');el.textContent=p.text==null?'':String(p.text);}");
+    html.Append("else if(c==='Divider'){el=document.createElement('hr');}");
+    html.Append("else if(c==='Button'){el=document.createElement('button');el.textContent=p.label==null?'':String(p.label);}");
+    html.Append("else if(c==='Card'){el=document.createElement('div');el.style.cssText='border:1px solid #ddd;border-radius:6px;padding:12px;margin:8px 0;';if(p.title){const h=document.createElement('h3');h.textContent=String(p.title);h.style.margin='0 0 8px';el.appendChild(h);}}");
+    html.Append("else if(c==='Row'){el=document.createElement('div');el.style.cssText='display:flex;gap:8px;flex-wrap:wrap;';}");
+    html.Append("else if(c==='Column'){el=document.createElement('div');el.style.cssText='display:flex;flex-direction:column;gap:8px;';}");
+    html.Append("else if(c==='Image'){el=document.createElement('img');if(p.url)el.src=String(p.url);if(p.alt)el.alt=String(p.alt);}");
+    html.Append("else{el=document.createElement('span');el.textContent='['+c+']';}");
+    html.Append("if(m.children&&m.children.length){for(const cid of m.children){const child=__byId.get(cid);if(child)el.appendChild(__build(child));}}");
+    html.Append("return el;}");
+    html.Append("for(const m of __top)__root.appendChild(__build(m));");
     html.Append("</script></body></html>");
     return html.ToString();
 }
@@ -324,15 +339,16 @@ static async Task<string> RenderSchemaFormHtml(SiteEntry site, SiteManager mgr)
     html.Append("<title>").Append(WebUtility.HtmlEncode(site.SitePath)).Append("</title>");
     html.Append("<script type=\"importmap\">");
     html.Append("{\"imports\":{");
-    html.Append("\"react\":\"https://esm.sh/react@18\",");
-    html.Append("\"react/jsx-runtime\":\"https://esm.sh/react@18/jsx-runtime\",");
-    html.Append("\"react-dom/client\":\"https://esm.sh/react-dom@18/client\",");
+    html.Append("\"react\":\"https://esm.sh/react@19\",");
+    html.Append("\"react/jsx-runtime\":\"https://esm.sh/react@19/jsx-runtime\",");
+    html.Append("\"react-dom/client\":\"https://esm.sh/react-dom@19/client\",");
     html.Append("\"@rjsf/core\":\"https://esm.sh/@rjsf/core@5\",");
     html.Append("\"@rjsf/utils\":\"https://esm.sh/@rjsf/utils@5\",");
     html.Append("\"@rjsf/validator-ajv8\":\"https://esm.sh/@rjsf/validator-ajv8@5\"");
     html.Append("}}");
     html.Append("</script>");
-    html.Append("<style>body{font-family:system-ui;max-width:800px;margin:2em auto;padding:0 1em;}</style>");
+    html.Append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
+    html.Append("<style>body{font-family:system-ui;max-width:800px;margin:2em auto;padding:0 1em;}@media(max-width:600px){body{margin:1em auto;padding:0 0.5em;}form>div,form>.form-group{margin-bottom:1em;}input,select,textarea{width:100%;box-sizing:border-box;font-size:16px;min-height:44px;padding:0.5em;}form button[type='submit'],button{width:100%;padding:0.75em 1em;font-size:16px;min-height:44px;margin-top:1em;background:#2563eb;color:#fff;border:0;border-radius:4px;}}</style>");
     html.Append("</head><body><div id=\"root\"></div><script>");
     html.Append("const SITE = { site_path: \"").Append(EscapeJs(site.SitePath)).Append("\", type: \"json-schema-form\", payload: ").Append(payloadJson).Append(" };");
     html.Append("</script>");
@@ -340,6 +356,7 @@ static async Task<string> RenderSchemaFormHtml(SiteEntry site, SiteManager mgr)
     html.Append("import React from 'react';");
     html.Append("import { createRoot } from 'react-dom/client';");
     html.Append("import Form from '@rjsf/core';");
+    html.Append("import validator from '@rjsf/validator-ajv8';");
     html.Append("const root = createRoot(document.getElementById('root'));");
     html.Append("function onSubmit(args) {");
     html.Append("  const data = (args && args.formData) || args;");
@@ -347,7 +364,7 @@ static async Task<string> RenderSchemaFormHtml(SiteEntry site, SiteManager mgr)
     html.Append("    .then(r => r.ok ? alert('Submitted!') : alert('Error: ' + r.status));");
     html.Append("  if (args && typeof args.preventDefault === 'function') args.preventDefault();");
     html.Append("}");
-    html.Append("root.render(React.createElement(Form, { schema: SITE.payload.schema || {}, formData: SITE.payload.data, onSubmit: onSubmit }));");
+    html.Append("root.render(React.createElement(Form, { schema: SITE.payload.schema || {}, formData: SITE.payload.data, validator: validator, onSubmit: onSubmit }));");
     html.Append("</script></body></html>");
     return html.ToString();
 }
@@ -530,4 +547,8 @@ static string DeleteScript() =>
 // Compiler fest in der Metadata-Tabelle eingetragen werden.
 public record ErrorEnvelope(string error);
 public record SubmitEnvelope(string submission_id, string received_at);
+
+[System.Text.Json.Serialization.JsonSerializable(typeof(SubmitEnvelope))]
+public partial class SubmitJsonContext : System.Text.Json.Serialization.JsonSerializerContext { }
+
 public partial class Program { }

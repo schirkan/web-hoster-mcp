@@ -327,7 +327,7 @@ public class SiteManager
     // DeserializeAsync<JsonElement> / SerializeToUtf8Bytes paths require an
     // explicit TypeInfoResolver. DefaultJsonTypeInfoResolver is enough for the
     // open payload schema used by a2ui and json-schema-form sites.
-    private static readonly JsonSerializerOptions PayloadJsonOptions = new(JsonSerializerDefaults.Web)
+    public static readonly JsonSerializerOptions PayloadJsonOptions = new(JsonSerializerDefaults.Web)
     {
         TypeInfoResolver = new DefaultJsonTypeInfoResolver()
     };

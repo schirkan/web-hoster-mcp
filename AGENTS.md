@@ -14,13 +14,14 @@ MIT — siehe [LICENSE](./LICENSE)
 
 ## Current Status
 
-Stand: 2026-09-24 (10:25)
+Stand: 2026-09-25 (19:50)
 
 - [x] MVP1-Spec v1.3: `specs/mvp1.md` — `type: "files"`-Pfad, 4 Tools, `content` plain-only, **Path-Validation (`..`/MAX_PATH)**, **timestamps lokal**, **replace+empty deletes all**, Cross-Ref auf MVP3 für `src`, Lock-Semantik-Footer
 - [x] MVP2-Spec v1.3: `specs/mvp2.md` — HTTPS (Beides, SAN, Self-Signed Fallback) + Retention (7d Default, 1h Interval mit **Range-Validation**, Background-Timer, Hard Delete) + HTTP-Delete-Endpoints mit **DELETE-Methode** + **`Host:UseHttps=false` → HTTPS off** + **`folder`-Retention: Registry weg, Host-Folder bleibt, Re-Deploy setzt `path` + `updated_at`** + Lock-Semantik-Footer
 - [x] MVP2-Listing v1.3: `specs/mvp2-directory-listing.md` — Lock-Semantik-Footer + Hinweis auf Delete-Buttons in MVP2 §4/§5
 - [x] MVP3-Spec v1.1: `specs/mvp3.md` — per-File `src` (Data URL / lokaler Pfad / HTTP-URL), **Path-Validation analog MVP1**, **UNC erlaubt**, **`data:` case-insensitive**, **kein 1 MB Download-Limit**, atomic write
-- [x] MVP4 Hosting-Typen v2.2: `specs/mvp4-render-types.md` — **Path-Validation für `folder`-Type**, **1 MB Limit für `payload.json` (a2ui/schema-form) und Submission-Body**, **NPM-Link für `@a2ui/react`**, **`file_count` analog für files/folder**, **`folder`-Retention-Explicit**, Lock-Semantik-Footer
+- [x] MVP4 Hosting-Typen v3.0: `specs/mvp4-render-types.md` — **Path-Validation für `folder`-Type**, **1 MB Limit für `payload.json` (a2ui/schema-form) und Submission-Body**, **Custom DOM-Renderer für `a2ui` (vanilla, kein `@a2ui/react`-Dep)**, **mobile-responsive RJSF (`@media(max-width:600px)`, Touch-Targets ≥ 44px)**, **`file_count` analog für files/folder**, **`folder`-Retention-Explicit**, Lock-Semantik-Footer
+- [x] MVP4-Fix v3.0 (Commit v0.0.7): A2UI-Render auf custom DOM-Renderer umgestellt (`Program.cs:RenderA2uiHtml`), RJSF mobile-responsive CSS (`Program.cs:RenderSchemaFormHtml`); alle 7 Sites auf Mobile nutzbar, alle 7 Sites rendern (Browser-Snapshots zeigen korrekten DOM-Inhalt); self-contained + trimmed `win-x64`-Release
 - [x] MVP5-Draft: `specs/mvp5-authorization.md` — Bearer-Token für HTTP-Endpoints (Draft, noch nicht gelockt)
 - [x] GitHub-Repo `schirkan/web-hoster-mcp` ist **public**
 - [x] LICENSE (MIT) hinzugefügt
