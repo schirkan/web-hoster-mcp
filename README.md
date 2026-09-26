@@ -22,18 +22,16 @@ Erweiterungen (via `src`-Parameter, Hosting-Typen, Retention):
 
 **Specs:**
 
+Specs sind nach **Feature** organisiert (durchnummeriert `01-19`); Übersicht mit MVP↔Feature-Mapping und Implementation-Status liegt in [`specs/README.md`](./specs/README.md).
+
 | Spec | Inhalt | Version |
 |------|--------|---------|
-| [`mvp1.md`](./specs/mvp1.md) | Base — 4 MCP-Tools für `type: "files"`, `content` plain-only, Path-Validation (`..`/MAX_PATH), Retention-Semantik | ✅ v1.3 locked |
-| [`mvp2.md`](./specs/mvp2.md) | Retention/Auto-Delete (7d default, 1h interval) + HTTP-Delete-Endpoints mit DELETE-Methode | ✅ v2.0 locked |
-| [`mvp2-directory-listing.md`](./specs/mvp2-directory-listing.md) | Directory-Listing für `files`/`folder` (kein Listing bei `a2ui`/`schema-form`) | ✅ v1.3 locked |
-| [`mvp3.md`](./specs/mvp3.md) | Per-File `src` (Data URL / lokaler Pfad / HTTP-URL), atomic write, kein 1 MB Download-Limit | ✅ v1.1 locked |
-| [`mvp4-render-types.md`](./specs/mvp4-render-types.md) | 4 Hosting-Typen (`type`: `files`/`folder`/`a2ui`/`json-schema-form`) + React + RJSF + custom DOM-Renderer für `a2ui` (vanilla, drop `@a2ui/react`) + Submit + `get_submissions` + 1 MB Limits für Payloads + mobile-responsive CSS (`@media(max-width:600px)`, Touch-Targets ≥ 44px) | ✅ v3.0 locked |
-| [`mvp5-authorization.md`](./specs/mvp5-authorization.md) | **Authorization Draft** (Bearer-Token für HTTP-Endpoints, noch nicht festgelegt) | 📝 Draft |
+| [`specs/README.md`](./specs/README.md) | Übersicht — MVP↔Feature-Mapping + Implementation-Status | ✅ v1.0 |
+| [`01-19 Feature-Dateien`](./specs/README.md) | 19 durchnummerierte Feature-Specs: HTTP Listener, Sites Storage, MCP-Tools (`deploy`/`list_sites`/`get_site_info`/`delete_site`/`get_submissions`), HTTP Routes (Sites Index, Site Listing, Static Files, DELETE), Retention, per-File `src`, Hosting Types (`files`/`folder`/`a2ui`/`json-schema-form`), Authorization, CI/CD | siehe Übersicht |
 
-**Lock-Semantik:** v1.0 = final; Änderungen führen zu v1.1/v2.0-Bump mit Changelog-Eintrag oben im jeweiligen Spec.
+**Lock-Semantik:** v0.x = Draft, v1.0 = locked; Änderungen führen zu v1.1/v2.0-Bump mit Changelog am Anfang der jeweiligen Feature-Datei. Implementation-Status wird **ausschließlich** in der Übersicht (`specs/README.md`) geführt.
 
-**Implementierung:** MVP1 + MVP2 + MVP3 + MVP4 umgesetzt (Stand `v0.0.6`). Weiterer Ausbau über MVP5+.
+**Implementierung:** Stand 2026-09-26 (`d47ab5e`) — 18/19 Features done; MVP5 (`18-authorization.md`) ist Draft und noch nicht implementiert. Build 0 Fehler, **103/103 Tests grün**.
 
 ---
 
@@ -180,13 +178,10 @@ web-hoster-mcp/
 ├── LICENSE                              # MIT
 ├── README.md                            # This file
 ├── AGENTS.md                            # Sub-Agent Context
-├── specs/                               # Specs (MVP1-4 gelockt, MVP5 Draft)
-│   ├── mvp1.md
-│   ├── mvp2.md
-│   ├── mvp2-directory-listing.md
-│   ├── mvp3.md
-│   ├── mvp4-render-types.md
-│   └── mvp5-authorization.md            # Draft
+├── specs/                               # Specs — nach Feature organisiert (durchnummeriert)
+│   ├── README.md                        # Übersicht (MVP↔Feature-Mapping + Implementation-Status)
+│   ├── 01-http-listener.md …            # durchnummeriert 01-19
+│   └── 19-ci-cd.md
 └── sites/                               # Runtime (gitignored)
     ├── registry.json
     └── <site_path>/

@@ -124,16 +124,9 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 
 ## Specs
 
-`projects/web-hoster-mcp/specs/` — siehe `specs/README.md`.
+Specs sind nach **Feature** organisiert (durchnummeriert `01-19`). Siehe [`specs/README.md`](./specs/README.md) für die **Übersicht** mit MVP↔Feature-Mapping und Implementation-Status. Implementation-Status wird **ausschließlich** in der Übersicht geführt (nicht in den Feature-Dateien — die sind status-frei und rein feature-bezogen).
 
-| Spec | Status |
-|------|--------|
-| `mvp1.md` | ✅ v1.3 locked |
-| `mvp2.md` | ✅ v2.0 locked (HTTPS raus) |
-| `mvp2-directory-listing.md` | ✅ v1.3 locked |
-| `mvp3.md` | ✅ v1.1 locked |
-| `mvp4-render-types.md` | ✅ v2.2 locked |
-| `mvp5-authorization.md` | 📝 Draft |
+Stand 2026-09-26: 19 Features extrahiert aus den MVP-zentrierten Specs (`mvp1-5.md`, `mvp2-directory-listing.md`, `ci-cd-pipeline.md`). Alte Dateien ersetzt — Git-History bewahrt die Versionsstände.
 
 ---
 
