@@ -16,7 +16,7 @@ public sealed class SiteTools
     }
 
     [McpServerTool(Name = "deploy")]
-    [Description("Deploys or updates a site. mode=merge|replace (files); site_path optional. path for folder, payload for a2ui/json-schema-form.")]
+    [Description("Deploys or updates a site. mode=merge|replace (files); site_path optional. path for folder, payload for a2ui/json-schema-form. Returns `url` (LAN-reachable HTTP URL of the deployed site, e.g. http://192.168.x.x:3000/<site_path>/) plus per-file `result_path` URLs for `type: \"files\"` so the KI the site is reachable from the LAN.")]
     public async Task<DeployToolResponse> Deploy(
         string? site_path = null,
         string type = "files",
@@ -43,7 +43,7 @@ public sealed class SiteTools
     }
 
     [McpServerTool(Name = "list_sites")]
-    [Description("Lists all sites as a raw array (no wrapper object).")]
+    [Description("Lists all sites as a raw array (no wrapper object). Each entry includes `url` (LAN-reachable HTTP URL, e.g. http://192.168.x.x:3000/<site_path>/) — share that link with the user instead of `localhost`, since this is a LAN-only server.")]
     public async Task<IReadOnlyList<ListSitesItem>> ListSites(CancellationToken cancellationToken = default)
     {
         var sites = await _siteManager.ListAsync(cancellationToken);
@@ -70,7 +70,7 @@ public sealed class SiteTools
     }
 
     [McpServerTool(Name = "get_site_info")]
-    [Description("Returns site details including file_count, expires_at, url, and files[].")]
+    [Description("Returns site details including file_count, expires_at, `url` (LAN-reachable HTTP URL, e.g. http://192.168.x.x:3000/<site_path>/) and `files[]` (each with its own `result_path` URL). Share the LAN URL with the user — never just `localhost`.")]
     public async Task<GetSiteInfoResponse> GetSiteInfo(string site_path, CancellationToken cancellationToken = default)
     {
         var site = await _siteManager.GetAsync(site_path, cancellationToken);
@@ -102,7 +102,7 @@ public sealed class SiteTools
     }
 
     [McpServerTool(Name = "delete_site")]
-    [Description("Deletes the site folder and the registry entry.")]
+    [Description("Deletes the site folder and the registry entry. For `type: \"folder\"` only the registry entry is removed (the external host folder is left untouched). After deletion, the `url` returned by `list_sites`/`get_site_info` for that site is gone.")]
     public async Task<DeleteSiteResponse> DeleteSite(string site_path, CancellationToken cancellationToken = default)
     {
         var deleted = await _siteManager.DeleteAsync(site_path, cancellationToken);
@@ -110,7 +110,7 @@ public sealed class SiteTools
     }
 
     [McpServerTool(Name = "get_submissions")]
-    [Description("Lists submissions of a json-schema-form site (newest first). Optional: since (ISO-8601), limit (default 50, max 500).")]
+    [Description("Lists submissions of a `type: \"json-schema-form\"` site (newest first). Optional `since` (ISO-8601) and `limit` (default 50, max 500). Submissions come from POST `<site>/submit`; the body's `data` field is the user-submitted form payload. To share the form URL with the user, use the `url` returned by `get_site_info` (LAN-reachable, not `localhost`).")]
     public async Task<IReadOnlyList<SubmissionInfoDto>> GetSubmissions(
         string site_path,
         string? since = null,
