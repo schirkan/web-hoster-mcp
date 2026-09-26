@@ -18,7 +18,7 @@ public class SiteManagerTests : IDisposable
         Directory.CreateDirectory(_sitesRoot);
 
         var sitesOptions = new SitesOptions { SitesRoot = _sitesRoot, MaxFileSizeBytes = 1_048_576 };
-        var hostOptions = new HostOptions { Ip = "0.0.0.0", Port = 3000, UseHttps = true, HttpsPort = 3443 };
+        var hostOptions = new HostOptions { Ip = "0.0.0.0", Port = 3000 };
 
         _registry = new SiteRegistry(Path.Combine(_tempDir, "registry.json"));
         _manager = new SiteManager(_registry, sitesOptions, hostOptions);

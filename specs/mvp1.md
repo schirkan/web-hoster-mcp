@@ -17,13 +17,13 @@ bereitstellt, um statische Web-Inhalte im **lokalen Netz** zu hosten.
 Diese Spec deckt **`type: "files"`** (Default-Hosting-Typ) ab.
 Weitere Hosting-Typen (`folder`, `a2ui`, `json-schema-form`) sind in
 `specs/mvp4-render-types.md` definiert. Für alternative File-Quellen
-über `src` (Data URL, lokaler Pfad, HTTP/HTTPS-URL) siehe
+über `src` (Data URL, lokaler Pfad, HTTP-URL) siehe
 `specs/mvp3.md`.
 
 ## Server
 
 - **Runtime:** .NET 8 (LTS) auf Windows
-- **HTTP:** 1× Kestrel-Listener auf `IP:Port` aus `appsettings.json`
+- **HTTP:** 1× Kestrel-Listener auf `IP:Port` aus `appsettings.json` (kein HTTPS)
 - **Default-Bind:** `0.0.0.0:3000`
 - **URL-Pattern:** `http://<ip>:<port>/<site_path>/<file>` — erstes Segment = Site-Identität
 - **LAN-IP autodetected** für `result_path` (nicht in Config)
@@ -257,7 +257,6 @@ Hinweis: `empty_files_not_allowed` ist seit v1.3 entfernt — `files: []` ist in
 
 ## Out of Scope (MVP1)
 
-- HTTPS (→ MVP2)
 - Auto-Delete / Retention (→ MVP2)
 - Directory Listing & Sites-Index (→ MVP2)
 - Hosting-Typen `folder`/`a2ui`/`json-schema-form` (→ MVP4)

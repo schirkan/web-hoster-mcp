@@ -4,6 +4,7 @@ using WebHosterMcp.Core;
 using WebHosterMcp.Host;
 using Xunit;
 
+
 namespace WebHosterMcp.Tests;
 
 public sealed class ServerCoreTests : IDisposable
@@ -19,32 +20,6 @@ public sealed class ServerCoreTests : IDisposable
     public void Dispose()
     {
         try { Directory.Delete(_tempDir, recursive: true); } catch { }
-    }
-
-    [Fact]
-    public void HttpsCertificateLoader_LoadOrCreate_CreatesSelfSignedPfx()
-    {
-        var hostOptions = new HostOptions { Ip = "0.0.0.0", Port = 3000, UseHttps = true, HttpsPort = 3443 };
-        var httpsOptions = new HttpsOptions
-        {
-            CertPath = null,
-            CertPassword = "test-password",
-            SelfSigned = new HttpsSelfSignedOptions
-            {
-                Enabled = true,
-                CertDir = Path.Combine(_tempDir, "certs"),
-                Cn = "test-host",
-                ForceRegenerate = true
-            }
-        };
-
-        var cert = HttpsCertificateLoader.LoadOrCreate(hostOptions, httpsOptions, _tempDir);
-
-        Assert.NotNull(cert);
-        Assert.True(cert.HasPrivateKey);
-
-        var expectedPath = Path.Combine(_tempDir, "certs", "test-host.pfx");
-        Assert.True(File.Exists(expectedPath));
     }
 
     [Fact]

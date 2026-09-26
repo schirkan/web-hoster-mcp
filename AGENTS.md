@@ -1,8 +1,8 @@
 # Web Hoster MCP — AGENTS.md
 
 Projekt: **Web Hoster MCP**
-Status: MVP1–MVP4 implementiert (inkl. E2E-Tests)
-Letztes Update: 2026-09-24
+Status: MVP1–MVP4 implementiert (inkl. E2E-Tests); HTTPS-Endpoint in v2.0 entfernt
+Letztes Update: 2026-09-25
 
 ---
 
@@ -17,7 +17,7 @@ MIT — siehe [LICENSE](./LICENSE)
 Stand: 2026-09-25 (19:50)
 
 - [x] MVP1-Spec v1.3: `specs/mvp1.md` — `type: "files"`-Pfad, 4 Tools, `content` plain-only, **Path-Validation (`..`/MAX_PATH)**, **timestamps lokal**, **replace+empty deletes all**, Cross-Ref auf MVP3 für `src`, Lock-Semantik-Footer
-- [x] MVP2-Spec v1.3: `specs/mvp2.md` — HTTPS (Beides, SAN, Self-Signed Fallback) + Retention (7d Default, 1h Interval mit **Range-Validation**, Background-Timer, Hard Delete) + HTTP-Delete-Endpoints mit **DELETE-Methode** + **`Host:UseHttps=false` → HTTPS off** + **`folder`-Retention: Registry weg, Host-Folder bleibt, Re-Deploy setzt `path` + `updated_at`** + Lock-Semantik-Footer
+- [x] MVP2-Spec v2.0: `specs/mvp2.md` — **HTTPS-Endpoint komplett entfernt** (Web Hoster liefert nur noch HTTP) + Retention (7d Default, 1h Interval mit **Range-Validation**, Background-Timer, Hard Delete) + HTTP-Delete-Endpoints mit **DELETE-Methode** + **`folder`-Retention: Registry weg, Host-Folder bleibt, Re-Deploy setzt `path` + `updated_at`** + Lock-Semantik-Footer
 - [x] MVP2-Listing v1.3: `specs/mvp2-directory-listing.md` — Lock-Semantik-Footer + Hinweis auf Delete-Buttons in MVP2 §4/§5
 - [x] MVP3-Spec v1.1: `specs/mvp3.md` — per-File `src` (Data URL / lokaler Pfad / HTTP-URL), **Path-Validation analog MVP1**, **UNC erlaubt**, **`data:` case-insensitive**, **kein 1 MB Download-Limit**, atomic write
 - [x] MVP4 Hosting-Typen v3.0: `specs/mvp4-render-types.md` — **Path-Validation für `folder`-Type**, **1 MB Limit für `payload.json` (a2ui/schema-form) und Submission-Body**, **Custom DOM-Renderer für `a2ui` (vanilla, kein `@a2ui/react`-Dep)**, **mobile-responsive RJSF (`@media(max-width:600px)`, Touch-Targets ≥ 44px)**, **`file_count` analog für files/folder**, **`folder`-Retention-Explicit**, Lock-Semantik-Footer
@@ -32,7 +32,8 @@ Stand: 2026-09-25 (19:50)
 - [x] Letzte 2 Backlog-Karten als E2E-Tests implementiert: `c2a52cad` (`ServerE2ETests.cs`, 9 Tests für Delete-Site/Delete-File/Retention-TTL/Delete-Button-Render + Source-Grep) und `23efd0b1` (`SrcE2ETests.cs`, 9 Tests für src=data/local/http + Error-Cases, mit echtem lokalem `HttpListener` als Source-Server)
 - [x] MVP1 vollständig implementiert (Karten 1-7 = done)
 - [x] Neu in Code: `SiteTools` (`deploy`, `list_sites`, `get_site_info`, `delete_site`), Static File Serving Route, E2E-Tests
-- [x] MVP2 in Code implementiert: HTTPS-Listener (PFX/Self-Signed), Retention-Background-Service, HTTP-DELETE-Endpunkte + Delete-Buttons in Listings
+- [x] MVP2 in Code implementiert: Retention-Background-Service, HTTP-DELETE-Endpunkte + Delete-Buttons in Listings
+- [x] **HTTPS-Endpoint entfernt** (Spec v2.0, Code-Refactor): `HttpsOptions`/`HttpsSelfSignedOptions`/`HttpsCertificateLoader` gelöscht, `Host:UseHttps`+`Host:HttpsPort` aus Config, `certs/`-Folder mit Self-Signed-PFX entfernt, `BuildSiteUrl` liefert immer `http://`
 - [x] MVP3 in Code implementiert: `per-File src` (Data URL / lokaler Pfad / HTTP/HTTPS), HttpClient mit Timeout, source-generated JSON context
 - [x] MVP4 in Code implementiert (Commit `01d62ec`, Tag `v0.0.6`): 4 Hosting-Typen `files`/`folder`/`a2ui`/`json-schema-form` mit Type-aware `DeployAsync` + Path-Validation, `payload.json` (1 MB), `POST /<site>/submit` (1 MB), `get_submissions` MCP-Tool mit `since`/`limit`, Render-Templates (React+A2UI / React+RJSF via CDN)
 - [x] MVP-Refactoring durchgeführt (Commit `8b88af1`, Tag `v0.0.5`): alle `MVP*`-Erwähnungen aus Code + Kommentaren entfernt, einheitliches Naming (`SrcOptions`, `SiteE2ETests`, `ServerCoreTests`, `SrcDownloadTests`)
@@ -90,11 +91,11 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 | ID | Titel | Priorität | Status |
 |----|-------|-----------|--------|
 | 6a49c9ad | MVP2-Spec: HTTPS + Retention + Delete-Endpoints schreiben | high | ✅ done (Commit dd55944) |
-| d1dbec46 | HTTPS-Endpoint + Cert-Loading (PFX + Self-Signed Fallback) | normal | ✅ done (Commit fe6bbad) |
+| ~~d1dbec46~~ | ~~HTTPS-Endpoint + Cert-Loading~~ | — | ❌ **entfernt in Spec v2.0 (2026-09-25)** |
 | 4c858484 | Retention-Background-Service (TTL + Auto-Delete) | normal | ✅ done (Commit fe6bbad) |
 | 775a5686 | HTTP-Delete-Endpoints (DELETE-Methode) — kein Confirm-Pattern | normal | ✅ done (Commit fe6bbad) |
 | a65169c7 | Delete-Buttons in Directory-Listings (JS + DELETE) | normal | ✅ done (Commit fe6bbad) |
-| c2a52cad | E2E-Test MVP2 (HTTPS + TTL + Delete-Links) | high | ✅ done (`ServerE2ETests.cs`, 9 Tests) |
+| c2a52cad | E2E-Test MVP2 (Retention + Delete-Links) | high | ✅ done (`ServerE2ETests.cs`, 9 Tests) |
 
 ### MVP3 — Per-File src (4 Karten)
 
@@ -128,7 +129,7 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 | Spec | Status |
 |------|--------|
 | `mvp1.md` | ✅ v1.3 locked |
-| `mvp2.md` | ✅ v1.3 locked |
+| `mvp2.md` | ✅ v2.0 locked (HTTPS raus) |
 | `mvp2-directory-listing.md` | ✅ v1.3 locked |
 | `mvp3.md` | ✅ v1.1 locked |
 | `mvp4-render-types.md` | ✅ v2.2 locked |

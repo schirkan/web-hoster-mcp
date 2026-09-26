@@ -1,8 +1,8 @@
 namespace WebHosterMcp.Core;
 
 /// <summary>
-/// Host configuration: HTTP/HTTPS listener.
-/// Bound from the `appsettings.json` `Host` section.
+/// Host configuration: HTTP listener.
+/// Bound from the <c>appsettings.json</c> <c>Host</c> section.
 /// </summary>
 public class HostOptions
 {
@@ -11,34 +11,6 @@ public class HostOptions
 
     /// <summary>HTTP port (default 3000).</summary>
     public int Port { get; set; } = 3000;
-
-    /// <summary>HTTPS listener enabled (default true).</summary>
-    public bool UseHttps { get; set; } = true;
-
-    /// <summary>HTTPS port (default 3443).</summary>
-    public int HttpsPort { get; set; } = 3443;
-}
-
-/// <summary>HTTPS certificate options.</summary>
-public class HttpsOptions
-{
-    /// <summary>Optional PFX path. null = no PFX, self-signed fallback.</summary>
-    public string? CertPath { get; set; }
-
-    /// <summary>PFX password.</summary>
-    public string? CertPassword { get; set; }
-
-    /// <summary>Self-signed certificate options.</summary>
-    public HttpsSelfSignedOptions SelfSigned { get; set; } = new();
-}
-
-/// <summary>Self-signed certificate generation (RSA 2048, SAN entries, persisted PFX).</summary>
-public class HttpsSelfSignedOptions
-{
-    public bool Enabled { get; set; } = true;
-    public string CertDir { get; set; } = "./certs";
-    public string? Cn { get; set; }
-    public bool ForceRegenerate { get; set; }
 }
 
 /// <summary>Retention / auto-delete options.</summary>
@@ -59,19 +31,19 @@ public class SitesOptions
     /// <summary>Site storage root (default ./sites).</summary>
     public string SitesRoot { get; set; } = "./sites";
 
-    /// <summary>Max file size in bytes for inline `content` (default 1 MB = 1048576).</summary>
+    /// <summary>Max file size in bytes for inline <c>content</c> (default 1 MB = 1048576).</summary>
     public int MaxFileSizeBytes { get; set; } = 1_048_576;
 
-    /// <summary>Max size in bytes for `payload.json` for a2ui/schema-form (default 1 MB).</summary>
+    /// <summary>Max size in bytes for <c>payload.json</c> for a2ui/schema-form (default 1 MB).</summary>
     public int MaxPayloadSizeBytes { get; set; } = 1_048_576;
 
     /// <summary>Max size in bytes for submission bodies for json-schema-form (default 1 MB).</summary>
     public int MaxSubmissionSizeBytes { get; set; } = 1_048_576;
 }
 
-/// <summary>`src` download options (data URL / local path / HTTP/HTTPS).</summary>
+/// <summary><c>src</c> download options (data URL / local path / HTTP URL).</summary>
 public class SrcOptions
 {
-    /// <summary>HTTP timeout in seconds for `src` HTTP/HTTPS downloads. Default 30s.</summary>
+    /// <summary>HTTP timeout in seconds for <c>src</c> HTTP downloads. Default 30s.</summary>
     public int HttpTimeoutSeconds { get; set; } = 30;
 }

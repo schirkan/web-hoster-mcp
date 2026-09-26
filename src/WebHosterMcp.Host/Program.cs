@@ -15,7 +15,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddConsole();
 
 builder.Services.Configure<HostOptions>(builder.Configuration.GetSection("Host"));
-builder.Services.Configure<HttpsOptions>(builder.Configuration.GetSection("Https"));
 builder.Services.Configure<RetentionOptions>(builder.Configuration.GetSection("Retention"));
 builder.Services.Configure<SitesOptions>(builder.Configuration);
 builder.Services.Configure<SrcOptions>(builder.Configuration.GetSection("Src"));
@@ -71,21 +70,14 @@ builder.Services
     .WithStdioServerTransport()
     .WithTools<WebHosterMcp.Host.SiteTools>(mcpToolJsonOptions);
 
-// Kestrel listener setup (HTTP + optional HTTPS)
+// Kestrel listener setup (HTTP only)
 var hostConfig = builder.Configuration.GetSection("Host").Get<HostOptions>() ?? new HostOptions();
-var httpsConfig = builder.Configuration.GetSection("Https").Get<HttpsOptions>() ?? new HttpsOptions();
 
 builder.WebHost.ConfigureKestrel(options =>
 {
     var bindIp = IPAddress.TryParse(hostConfig.Ip, out var parsed) ? parsed : IPAddress.Any;
 
     options.Listen(bindIp, hostConfig.Port);
-
-    if (hostConfig.UseHttps && hostConfig.HttpsPort > 0)
-    {
-        var certificate = HttpsCertificateLoader.LoadOrCreate(hostConfig, httpsConfig, builder.Environment.ContentRootPath);
-        options.Listen(bindIp, hostConfig.HttpsPort, listen => listen.UseHttps(certificate));
-    }
 });
 
 var app = builder.Build();
@@ -228,17 +220,9 @@ var lanIp = LanIpDetector.GetLanIpv4();
 app.Logger.LogInformation("WebHosterMcp:");
 app.Logger.LogInformation("  MCP server (stdio): ready");
 app.Logger.LogInformation("  HTTP: {Scheme}://{Ip}:{Port}/", "http", hostOptions.Ip, hostOptions.Port);
-if (hostOptions.UseHttps && hostOptions.HttpsPort > 0)
-{
-    app.Logger.LogInformation("  HTTPS: {Scheme}://{Ip}:{Port}/", "https", hostOptions.Ip, hostOptions.HttpsPort);
-}
 if (lanIp is not null && lanIp != hostOptions.Ip)
 {
     app.Logger.LogInformation("  HTTP (LAN): http://{LanIp}:{Port}/", lanIp, hostOptions.Port);
-    if (hostOptions.UseHttps && hostOptions.HttpsPort > 0)
-    {
-        app.Logger.LogInformation("  HTTPS (LAN): https://{LanIp}:{Port}/", lanIp, hostOptions.HttpsPort);
-    }
 }
 
 await app.RunAsync();

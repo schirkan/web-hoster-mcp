@@ -8,7 +8,7 @@ using Xunit;
 namespace WebHosterMcp.Tests;
 
 /// <summary>
-/// End-to-end Tests für HTTPS / TTL retention / HTTP-DELETE-Endpoints und Delete-Buttons
+/// End-to-end Tests für TTL retention / HTTP-DELETE-Endpoints und Delete-Buttons
 /// im Directory-/Sites-Index-Listing. Übt dieselbe Code-Oberfläche aus, die die
 /// HTTP-Routen in Program.cs aufrufen (SiteManager.DeleteAsync / DeleteFileAsync,
 /// RetentionHostedService.SweepAsync, SiteManager.ListFiles für die Delete-Button-
@@ -182,16 +182,6 @@ public sealed class ServerE2ETests : IDisposable
         Assert.Contains("data-delete-file", source);
         Assert.Contains("method: 'DELETE'", source);
         Assert.Contains("delete-btn", source);
-    }
-
-    [Fact]
-    public void HttpsOptions_DefaultsAreConfiguredForSelfSignedFallback()
-    {
-        // HttpsCertificateLoader.LoadOrCreate wird in ServerCoreTests abgedeckt.
-        // Hier prüfen wir die Default-Options-Struktur, die der HTTPS-Endpoint erwartet.
-        var opts = new HttpsOptions();
-        Assert.NotNull(opts.SelfSigned);
-        Assert.True(opts.SelfSigned.Enabled);
     }
 
     private static string ReadProgramCsSource()

@@ -9,10 +9,9 @@ bereitstellt, um statische Web-Inhalte im **lokalen Netz** zu hosten.
 - **`delete_site`** — Site löschen
 - **`get_submissions`** — Schema-Form Submissions abholen
 
-Erweiterungen (via `src`-Parameter, Hosting-Typen, HTTPS, Retention):
+Erweiterungen (via `src`-Parameter, Hosting-Typen, Retention):
 
 - **4 Hosting-Typen (`type`):** `files` (default) / `folder` / `a2ui` / `json-schema-form`
-- **HTTPS** parallel zu HTTP (PFX-Cert oder Self-Signed Fallback mit SAN-Entries)
 - **Retention / Auto-Delete** per Site (TTL seit `updated_at`, Background-Timer, 7 Tage Default, 1h Interval)
 - **Per-File `src`-Parameter** (Data URL / lokaler Pfad inkl. UNC / HTTP-URL → physische Kopie via atomic-write)
 - **HTTP-Delete-Endpoints** mit **DELETE-Methode** (kein Confirm-Pattern, kein Prefetch-Risiko) + JS-Buttons in Listings
@@ -26,7 +25,7 @@ Erweiterungen (via `src`-Parameter, Hosting-Typen, HTTPS, Retention):
 | Spec | Inhalt | Version |
 |------|--------|---------|
 | [`mvp1.md`](./specs/mvp1.md) | Base — 4 MCP-Tools für `type: "files"`, `content` plain-only, Path-Validation (`..`/MAX_PATH), Retention-Semantik | ✅ v1.3 locked |
-| [`mvp2.md`](./specs/mvp2.md) | HTTPS (Cert Beides, SAN, Self-Signed Fallback) + Retention/Auto-Delete (7d default, 1h interval) + HTTP-Delete-Endpoints mit DELETE-Methode | ✅ v1.3 locked |
+| [`mvp2.md`](./specs/mvp2.md) | Retention/Auto-Delete (7d default, 1h interval) + HTTP-Delete-Endpoints mit DELETE-Methode | ✅ v2.0 locked |
 | [`mvp2-directory-listing.md`](./specs/mvp2-directory-listing.md) | Directory-Listing für `files`/`folder` (kein Listing bei `a2ui`/`schema-form`) | ✅ v1.3 locked |
 | [`mvp3.md`](./specs/mvp3.md) | Per-File `src` (Data URL / lokaler Pfad / HTTP-URL), atomic write, kein 1 MB Download-Limit | ✅ v1.1 locked |
 | [`mvp4-render-types.md`](./specs/mvp4-render-types.md) | 4 Hosting-Typen (`type`: `files`/`folder`/`a2ui`/`json-schema-form`) + React + RJSF + custom DOM-Renderer für `a2ui` (vanilla, drop `@a2ui/react`) + Submit + `get_submissions` + 1 MB Limits für Payloads + mobile-responsive CSS (`@media(max-width:600px)`, Touch-Targets ≥ 44px) | ✅ v3.0 locked |
@@ -100,7 +99,7 @@ Die MCP-Tools `deploy`, `list_sites`, `get_site_info`, `delete_site`, `get_submi
 
 ### Architekturhinweis
 
-Der Server spricht **MCP-over-stdio** (`Program.cs` → `AddMcpServer().WithStdioServerTransport()`). stdin/stdout ist das Wire-Format zwischen Agent und Server — die Konsole bleibt sauber. Parallel läuft Kestrel auf Port 3000 (HTTP, optional Port 3443 HTTPS) und liefert die deployten Sites als Web-UI aus. Beide Pfade laufen im selben Prozess — keine zwei Binaries, keine zwei Configs.
+Der Server spricht **MCP-over-stdio** (`Program.cs` → `AddMcpServer().WithStdioServerTransport()`). stdin/stdout ist das Wire-Format zwischen Agent und Server — die Konsole bleibt sauber. Parallel läuft Kestrel auf Port 3000 (HTTP) und liefert die deployten Sites als Web-UI aus. Beide Pfade laufen im selben Prozess — keine zwei Binaries, keine zwei Configs.
 
 ### Konfiguration
 
@@ -111,14 +110,14 @@ Der Server spricht **MCP-over-stdio** (`Program.cs` → `AddMcpServer().WithStdi
 3. `appsettings.{ASPNETCORE_ENVIRONMENT}.json`
 4. `appsettings.json`
 
-**Defaults reichen?** Im Release-ZIP liegt eine `appsettings.json` neben der `.exe` mit den Repo-Defaults: `SitesRoot: "./sites"`, `Host:Ip: "0.0.0.0"`, Port 3000, Retention 7 d, Src-Timeout 30 s, Self-Signed-HTTPS on. **Kein Setup nötig**, der Server bootet damit.
+**Defaults reichen?** Im Release-ZIP liegt eine `appsettings.json` neben der `.exe` mit den Repo-Defaults: `SitesRoot: "./sites"`, `Host:Ip: "0.0.0.0"`, Port 3000, Retention 7 d, Src-Timeout 30 s. **Kein Setup nötig**, der Server bootet damit.
 
 **Eigene Werte ohne env vars:** Direkt in die `appsettings.json` neben der Binary editieren:
 
 ```json
 {
   "Logging":   { "LogLevel": { "Default": "Information", "Microsoft.AspNetCore": "Warning" } },
-  "Host":      { "Ip": "127.0.0.1", "Port": 3000, "UseHttps": false },
+  "Host":      { "Ip": "127.0.0.1", "Port": 3000 },
   "Retention": { "Enabled": true, "DefaultTtlSeconds": 604800, "CheckIntervalSeconds": 3600 },
   "Src":       { "HttpTimeoutSeconds": 30 },
   "SitesRoot": "C:\\Users\\<USER>\\Documents\\web-hoster-sites",
@@ -165,7 +164,6 @@ Für Endanwender ohne .NET-SDK: [Lokale Installation](#lokale-installation).
 dotnet build
 dotnet run --project src/WebHosterMcp.Host
 # → Kestrel auf 0.0.0.0:3000 (HTTP)
-# → HTTPS parallel auf 0.0.0.0:3443 (Self-Signed Cert wenn kein PFX konfiguriert)
 # → MCP-Endpoint via stdio
 ```
 
@@ -182,7 +180,7 @@ web-hoster-mcp/
 ├── LICENSE                              # MIT
 ├── README.md                            # This file
 ├── AGENTS.md                            # Sub-Agent Context
-├── specs/                               # Specs (MVP1-5 gelockt/Draft)
+├── specs/                               # Specs (MVP1-4 gelockt, MVP5 Draft)
 │   ├── mvp1.md
 │   ├── mvp2.md
 │   ├── mvp2-directory-listing.md
@@ -201,7 +199,7 @@ web-hoster-mcp/
 
 ## Spezifikation (Kurzfassung)
 
-- **Server:** 1× Kestrel-Listener auf `0.0.0.0:3000` (HTTP) + optional `0.0.0.0:3443` (HTTPS parallel). HTTPS off wenn `Host:UseHttps = false`.
+- **Server:** 1× Kestrel-Listener auf `0.0.0.0:3000` (HTTP).
 - **URL-Pattern:** `http://<ip>:<port>/<site_path>/<file>` — erstes Segment = Site-Identität.
 - **Site-Types:** `files` (default), `folder` (Host-Ordner-Mirror), `a2ui` (Google A2UI v0.9.1), `json-schema-form` (RJSF).
 - **Path-Validation:** `..` nicht erlaubt, max 260 Zeichen (Windows MAX_PATH), UNC erlaubt.

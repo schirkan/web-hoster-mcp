@@ -668,12 +668,7 @@ public class SiteManager
             var lan = LanIpDetector.GetLanIpv4();
             if (!string.IsNullOrEmpty(lan)) host = lan;
         }
-        // Reflect the active binding: when UseHttps is on and HttpsPort is
-        // configured, return an https URL on the HTTPS port; otherwise http.
-        var useHttps = _hostOptions.UseHttps && _hostOptions.HttpsPort > 0;
-        var scheme = useHttps ? "https" : "http";
-        var port = useHttps ? _hostOptions.HttpsPort : _hostOptions.Port;
-        return $"{scheme}://{host}:{port}/{sitePath}/";
+        return $"http://{host}:{_hostOptions.Port}/{sitePath}/";
     }
 
     private static DeployResult ErrorResult(string code, string? sitePath = null)
