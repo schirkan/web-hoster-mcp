@@ -65,7 +65,11 @@ public class SiteManager
         _retentionOptions = retentionOptions ?? new RetentionOptions();
         _srcOptions = srcOptions ?? new SrcOptions();
         _httpMessageHandler = httpMessageHandler;
-        _sitesRoot = Path.GetFullPath(sitesOptions.SitesRoot);
+        // Relative paths from appsettings.json must anchor to the executable
+        // directory (AppContext.BaseDirectory), NOT to CWD. Without this, an
+        // MCP host that spawns the process from C:\Windows\System32 would
+        // resolve "./sites" to the wrong location. See PathResolver.Resolve.
+        _sitesRoot = PathResolver.Resolve(sitesOptions.SitesRoot);
         Directory.CreateDirectory(_sitesRoot);
     }
 
@@ -137,16 +141,40 @@ public class SiteManager
                 break;
 
             case "a2ui":
-            case "json-schema-form":
                 if (request.Files != null && request.Files.Count > 0)
-                    return ErrorResult($"files_not_allowed_for_{request.Type.Replace("-", "_")}", sitePath);
+                    return ErrorResult("files_not_allowed_for_a2ui", sitePath);
                 if (request.Path != null)
                     return ErrorResult("path_not_allowed_for_render", sitePath);
 
                 if (request.Payload == null)
                     return ErrorResult("payload_required", sitePath);
 
-                var payloadError = await WritePayloadAsync(sitePath, request.Payload.Value, ct);
+                // Spec 21: a2ui payloads are { "messages": [...] } — no schema, no validator.
+                // Still enforce the size limit (WritePayloadAsync does that via MaxPayloadSizeBytes).
+                var a2uiPayloadError = await WritePayloadAsync(sitePath, request.Payload.Value, ct);
+                if (a2uiPayloadError != null)
+                    return ErrorResult(a2uiPayloadError, sitePath);
+                break;
+
+            case "json-schema-form":
+                if (request.Files != null && request.Files.Count > 0)
+                    return ErrorResult("files_not_allowed_for_json_schema_form", sitePath);
+                if (request.Path != null)
+                    return ErrorResult("path_not_allowed_for_render", sitePath);
+
+                if (request.Payload == null)
+                    return ErrorResult("payload_required", sitePath);
+
+                // Spec 21: validate payload before persisting. Auto-corrects
+                // legacy `options.enumNames` (RJSF v4) to the v5-conformant `oneOf`.
+                var validationError = PayloadValidator.Validate(
+                    request.Payload.Value,
+                    _sitesOptions.MaxPayloadSizeBytes,
+                    out var normalizedPayload);
+                if (validationError != null)
+                    return ErrorResult(validationError, sitePath);
+
+                var payloadError = await WritePayloadAsync(sitePath, normalizedPayload, ct);
                 if (payloadError != null)
                     return ErrorResult(payloadError, sitePath);
                 break;
@@ -625,7 +653,14 @@ public class SiteManager
         Directory.CreateDirectory(siteFolder);
         var payloadPath = Path.Combine(siteFolder, "payload.json");
 
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(payload, PayloadJsonOptions);
+        // Spec 21 (Bug-Fix #1): use payload.GetRawText() instead of
+        // JsonSerializer.SerializeToUtf8Bytes(payload, ...) so the JSON we write to disk
+        // is byte-identical to what came over the wire. The previous round-trip corrupted
+        // arrays ({"item": [...]}) and primitives ("true" statt true) when the
+        // JsonElement was bound via MCP tool parameter binding.
+        var rawText = payload.GetRawText();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(rawText);
+
         if (bytes.Length > _sitesOptions.MaxPayloadSizeBytes)
             return "payload_too_large";
 

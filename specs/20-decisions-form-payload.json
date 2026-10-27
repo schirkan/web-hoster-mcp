@@ -1,0 +1,163 @@
+{
+  "schema": {
+    "title": "Spec-Lock Entscheidungen — 20-submission-notifications (v2: alle Felder optional + Anmerkungen)",
+    "description": "Martin: Alle 9 Fragen sind jetzt optional. Jede Frage hat ein eigenes qN_comment-Feld für Anmerkungen. Defaults sind leere Werte. Submit speichert deine Antworten im Site-Folder; ich werte sie danach via get_submissions aus und locke die Spec.",
+    "type": "object",
+    "properties": {
+      "q1_hook_plugin_repo": {
+        "type": "string",
+        "title": "Q1: Hook-Plugin-Repo",
+        "description": "Wo lebt das OpenClaw-Hook-Plugin (das den POST /hooks/web-hoster-submission in einen agentTurn umwandelt)?",
+        "default": "",
+        "oneOf": [
+          { "const": "", "title": "— keine Auswahl —" },
+          { "const": "same_repo", "title": "gleiches Repo (schirkan/web-hoster-mcp, plugins/web-hoster-submission/)" },
+          { "const": "separate_repo", "title": "separates Repo (schirkan/web-hoster-mcp-openclaw-hook) — unabhängige Releases, klare Lizenz-Trennung" },
+          { "const": "monorepo_workspace", "title": "Monorepo-Workspace (packages/web-hoster-mcp + packages/...-openclaw-hook)" }
+        ]
+      },
+      "q1_comment": {
+        "type": "string",
+        "title": "Q1 — Anmerkung",
+        "default": ""
+      },
+      "q2_session_hint_additive": {
+        "type": "boolean",
+        "title": "Q2: session_hint als additiver deploy-Parameter",
+        "description": "Soll der MCP-Tool-Parameter session_hint additiv zum deploy-Call hinzugefügt werden? Vorschlag: ja (kein Bruch der deploy-Signatur).",
+        "default": false
+      },
+      "q2_comment": {
+        "type": "string",
+        "title": "Q2 — Anmerkung",
+        "default": ""
+      },
+      "q3_failed_delivery_retention_seconds": {
+        "type": "integer",
+        "title": "Q3: Failed-Delivery-Retention (Sekunden)",
+        "description": "Wie lange sollen persistierte Failed-Deliveries (JSON in <SitesRoot>/.notifications/) aufgehoben werden? Vorschlag: gleich wie Submission-Retention (Default 604800 = 7d).",
+        "default": 0,
+        "minimum": 0,
+        "maximum": 31536000
+      },
+      "q3_comment": {
+        "type": "string",
+        "title": "Q3 — Anmerkung",
+        "default": ""
+      },
+      "q4_hmac_mode": {
+        "type": "string",
+        "title": "Q4: HMAC-Modus",
+        "description": "Wie wird der X-WebHoster-Signature-Header berechnet?",
+        "default": "",
+        "oneOf": [
+          { "const": "", "title": "— keine Auswahl —" },
+          { "const": "raw_body", "title": "raw_body (byte-genau über POST-Body) — Stripe/GitHub-Style, einfach" },
+          { "const": "canonicalized_json", "title": "canonicalized_json (sortierte Keys, kein Whitespace) — robuster gegen Encoding-Edge-Cases, aber komplexer" }
+        ]
+      },
+      "q4_comment": {
+        "type": "string",
+        "title": "Q4 — Anmerkung",
+        "default": ""
+      },
+      "q5_replay_window_seconds": {
+        "type": "integer",
+        "title": "Q5: Replay-Window (Sekunden)",
+        "description": "Wie lang darf die Timestamp-Drift maximal sein, damit das HMAC als aktuell gilt? Vorschlag: 300s (5 min — Kompromiss zwischen Sicherheit und Clock-Skew-Toleranz).",
+        "default": 0,
+        "minimum": 0,
+        "maximum": 3600
+      },
+      "q5_comment": {
+        "type": "string",
+        "title": "Q5 — Anmerkung",
+        "default": ""
+      },
+      "q6_retry_runtime": {
+        "type": "string",
+        "title": "Q6: Retry-Runtime",
+        "description": "Wo läuft der Webhook-Retry-Worker (exponentielles Backoff bei 5xx)?",
+        "default": "",
+        "oneOf": [
+          { "const": "", "title": "— keine Auswahl —" },
+          { "const": "in_process", "title": "In-Process BackgroundService im Host (einfachster Fall, geht bei Gateway-Restart / Host-Crash verloren)" },
+          { "const": "external_worker", "title": "externer Worker (z. B. eigener Service mit DB-Persistenz + separater Worker) — robuster, mehr Aufwand" }
+        ]
+      },
+      "q6_comment": {
+        "type": "string",
+        "title": "Q6 — Anmerkung",
+        "default": ""
+      },
+      "q7_token_encryption_at_rest": {
+        "type": "boolean",
+        "title": "Q7: Token-Encryption-at-Rest",
+        "description": "Callback-Token at-rest verschlüsseln (im Submission-JSON unter _meta.callback_token)? Vorschlag: nein, Token ist nicht-gehheim — Authentizität kommt vom HMAC.",
+        "default": false
+      },
+      "q7_comment": {
+        "type": "string",
+        "title": "Q7 — Anmerkung",
+        "default": ""
+      },
+      "q8_reply_rate_limit_per_submission": {
+        "type": "integer",
+        "title": "Q8: Reply-Rate-Limit pro Submission",
+        "description": "Wie viele Replies pro Submission sind erlaubt? Default 1 (Single-Shot-Antwort). Konfigurierbar pro Site.",
+        "default": 1,
+        "minimum": 1,
+        "maximum": 10
+      },
+      "q8_comment": {
+        "type": "string",
+        "title": "Q8 — Anmerkung",
+        "default": ""
+      },
+      "q9_gateway_restart_handling": {
+        "type": "string",
+        "title": "Q9: Verhalten bei Gateway-Restart",
+        "description": "Was tun, wenn zwischen Submission (Host schreibt File, queues Webhook) und Notification-Delivery der OpenClaw-Gateway restarted?",
+        "default": "",
+        "oneOf": [
+          { "const": "", "title": "— keine Auswahl —" },
+          { "const": "retry_in_process", "title": "Retry-Task im Host versucht 4× (1s/5s/25s/125s) — bei Total-Fail Persist in .notifications/ + get_failed_notifications-Tool. Risiko: Window zwischen Submission und 4. Retry ≈ 156 s." },
+          { "const": "fail_persist_alert", "title": "Sofort Fail + Persist + Alert — kein Auto-Retry, Agent/User entscheidet manuell über Re-Trigger" }
+        ]
+      },
+      "q9_comment": {
+        "type": "string",
+        "title": "Q9 — Anmerkung",
+        "default": ""
+      },
+      "comment": {
+        "type": "string",
+        "title": "Generelle Anmerkungen (optional)",
+        "description": "Alles was nicht in die 9 Fragen passt — übergreifende Punkte, Spec-weite Bedenken.",
+        "default": ""
+      }
+    },
+    "additionalProperties": false
+  },
+  "data": {
+    "q1_hook_plugin_repo": "",
+    "q1_comment": "",
+    "q2_session_hint_additive": false,
+    "q2_comment": "",
+    "q3_failed_delivery_retention_seconds": 0,
+    "q3_comment": "",
+    "q4_hmac_mode": "",
+    "q4_comment": "",
+    "q5_replay_window_seconds": 0,
+    "q5_comment": "",
+    "q6_retry_runtime": "",
+    "q6_comment": "",
+    "q7_token_encryption_at_rest": false,
+    "q7_comment": "",
+    "q8_reply_rate_limit_per_submission": 1,
+    "q8_comment": "",
+    "q9_gateway_restart_handling": "",
+    "q9_comment": "",
+    "comment": ""
+  }
+}

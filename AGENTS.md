@@ -1,8 +1,8 @@
 # Web Hoster MCP — AGENTS.md
 
 Projekt: **Web Hoster MCP**
-Status: MVP1–MVP4 implementiert (inkl. E2E-Tests); HTTPS-Endpoint in v2.0 entfernt
-Letztes Update: 2026-09-25
+Status: MVP1–MVP4 implementiert (inkl. E2E-Tests); HTTPS-Endpoint in v2.0 entfernt; Spec 21 (Payload Validation) implementiert
+Letztes Update: 2026-09-27
 
 ---
 
@@ -13,6 +13,14 @@ MIT — siehe [LICENSE](./LICENSE)
 ---
 
 ## Current Status
+
+Stand: 2026-09-27 (14:50)
+
+- [x] **Spec 21 — Payload Validation at Deploy** (2026-09-27): `WebHosterMcp.Core.PayloadValidator.Validate()` prüft das `payload` bei `json-schema-form`-Deploys (a2ui ungeprüft). Auto-korrigiert das legacy RJSF-v4-Pattern `options.enumNames` zu v5-konformem `oneOf: [{const, title}, …]`. `SiteManager.WritePayloadAsync` nutzt jetzt `payload.GetRawText()` (Bug-Fix: vorheriger `JsonSerializer.SerializeToUtf8Bytes`-Roundtrip zerstörte Arrays/Primitives/leere Objekte via `McpToolJsonContext`). `a2ui`- und `json-schema-form`-Cases im Deploy-Switch getrennt. Build 0 Fehler, **125/125 Tests grün** (16 neue `PayloadValidatorTests` + 6 neue `PayloadRoundtripTests` + 103 alte ohne Regression). 5 `HostingTypenTests` von `{"schema":{}}` auf valides `{"schema":{"type":"object","properties":{}}}` aktualisiert. Spec `21-payload-validation.md` (8,6 KB) + `specs/README.md` aktualisiert. Neu deployed nach `C:\mcp\web-hoster-mcp\`. **Aktion:** OpenClaw-Gateway neu starten, damit der neue Binary gespawnt wird; dann `spec-20-decisions` via MCP-`deploy` neu deployen, um den End-to-End-Bugfix zu verifizieren.
+- [x] **PathResolver-Fix v0.0.7 (workdir)** (2026-09-26): `WebHosterMcp.Core.PathResolver.Resolve()` löst relative `SitesRoot`-Pfade gegen `AppContext.BaseDirectory` (EXE-Verzeichnis) statt gegen CWD. Verwendet in `SiteManager` und `Program` (lokaler Helper entfernt). Behebt den Crash, der entstand wenn der OpenClaw-Gateway den Host mit fremdem CWD spawnt (`C:\Windows\System32`), wodurch `appsettings.json` → `SitesRoot: "./sites"` auf `C:\Windows\System32\sites` auflösen würde. Build 0 Fehler, 103/103 Tests grün. Neu deployed nach `C:\mcp\web-hoster-mcp\` (Backup `…backup-20260926-225044\`), `sites/` + `appsettings.json` preserved.
+- [x] `WebHosterMcp.Host.exe.v1.bak` + `certs/` aufgeräumt (HTTPS seit Spec v2.0 obsolet)
+- [x] `C:\mcp\web-hoster-mcp.bak` (19,5 MB single-file self-contained Altlast) gelöscht
+- [-] `temp/web-hoster-test/` hat noch einen offenen NTFS-Handle — manuell nach Reboot oder via `handle.exe` zu lösen (nicht-blockierend)
 
 Stand: 2026-09-25 (19:50)
 
@@ -72,7 +80,7 @@ Stand: 2026-09-25 (19:50)
 Board-ID: `web-hoster-mcp` (= Projektordner-Name)
 Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 
-**Stats:** 26 Karten — 26 done + 0 backlog (MVP1: 7 done, MVP2: 6 done + 0 backlog, MVP3: 4 done + 0 backlog, MVP4: 9 done)
+**Stats:** 29 Karten — 29 done + 0 backlog (MVP1: 7 done, MVP2: 6 done + 0 backlog, MVP3: 4 done + 0 backlog, MVP4: 9 done + 0 backlog, Spec 21: 3 done)
 
 ### MVP1 — Base (7 Karten)
 
@@ -118,7 +126,15 @@ Default-Workspace: `C:\Users\Admin\.openclaw\workspace\projects\web-hoster-mcp`
 | b2f0e65e | A2UI-Render-Pipeline (offizieller React-Renderer) | normal | ✅ done (Commit 01d62ec) |
 | ed171227 | Schema-Form-Render-Pipeline (RJSF) | normal | ✅ done (Commit 01d62ec) |
 | 9567975c | Submit-Endpoint + get_submissions Tool | normal | ✅ done (Commit 01d62ec) |
-| 2c27bae7 | E2E-Test MVP4 (a2ui + schema-form + folder) | high | ✅ done (Commit 01d62ec) |
+| 2c27bae7 | E2E-Test MVP4 (a2form + schema-form + folder) | high | ✅ done (Commit 01d62ec) |
+
+### Spec 21 — Payload Validation at Deploy (3 Karten)
+
+| ID | Titel | Priorität | Status |
+|----|-------|-----------|--------|
+| 21a01b2c | `PayloadValidator`: JSON-Schema-Validation + Auto-Korrektur (`options.enumNames` → `oneOf`) | high | ✅ done |
+| 21b02c3d | `WritePayloadAsync`-Bugfix: `GetRawText()` statt `SerializeToUtf8Bytes` | high | ✅ done |
+| 21c03d4e | `a2ui` vs `json-schema-form`-Cases im `DeployAsync`-Switch trennen | normal | ✅ done |
 
 ---
 

@@ -19,4 +19,15 @@
     <ProjectReference Include="..\WebHosterMcp.Core\WebHosterMcp.Core.csproj" />
   </ItemGroup>
 
+  <!-- Spec 02-sites-storage v1.4: SitesRoot resolution anchors relative paths
+       to the executable directory (AppContext.BaseDirectory). The content
+       include below makes the workspace sites/ folder available next to the
+       built/published EXE, so dev builds (bin/Debug/net8.0/sites/) and the
+       MCP deployment (exe-dir/sites/) behave identically. -->
+  <ItemGroup>
+    <Content Include="..\..\sites\**\*" Link="sites\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

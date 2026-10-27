@@ -1,9 +1,10 @@
 # 02 — Sites Storage & Registry
 
-**Stand:** 2026-09-26 · v1.3 (lock)
+**Stand:** 2026-09-26 · v1.4 (lock)
 
 ## Changelog
 
+- **v1.4 (2026-09-26):** Resolution-Regel für `SitesRoot` präzisiert: relative Pfade werden gegen `AppContext.BaseDirectory` (EXE-Verzeichnis) aufgelöst, **nicht** gegen CWD. Damit ist der Pfad portabel und unabhängig vom Working-Directory des Prozesses. `WebHosterMcp.Host.csproj` enthält jetzt einen Content-Include für `<workspace>/sites/`, damit das `sites/`-Verzeichnis beim Build neben dem EXE liegt (Bin-Deploy und lokale Dev-Builds verhalten sich identisch).
 - **2026-09-26 (Übergang in Feature-Modell):** Aus MVP1 §Storage-Layout extrahiert. Schema v1, Time-stamps als lokale Server-Zeit, `retention_seconds`-Feld optional.
 - **v1.3 (2026-09-23, MVP1):** Path-Validation (`..` / MAX_PATH) im Site-Folder-Zugriff, Schema v1.
 - (vorherige Versionen) Siehe Git-History von `specs/mvp1.md`.
@@ -42,7 +43,7 @@ Wichtige Eigenschaften:
 
 | Key | Default | Bedeutung |
 |---|---|---|
-| `SitesRoot` | `"./sites"` | Storage-Root, relativ zu CWD oder Binary-Verzeichnis |
+| `SitesRoot` | `"./sites"` | Storage-Root, relativ zum EXE-Verzeichnis (`AppContext.BaseDirectory`); absolute Pfade bleiben erlaubt |
 | `MaxFileSizeBytes` | `1_048_576` (1 MB) | Limit für inline `content` pro File |
 | `MaxPayloadSizeBytes` | `1_048_576` (1 MB) | Limit für `payload.json` (a2ui / schema-form) |
 | `MaxSubmissionSizeBytes` | `1_048_576` (1 MB) | Limit für POST-`/submit`-Body (schema-form) |

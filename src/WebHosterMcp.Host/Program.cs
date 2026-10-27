@@ -34,7 +34,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddSingleton(sp =>
 {
     var sites = sp.GetRequiredService<IOptions<SitesOptions>>().Value;
-    var sitesRoot = Path.GetFullPath(sites.SitesRoot);
+    var sitesRoot = PathResolver.Resolve(sites.SitesRoot);
     Directory.CreateDirectory(sitesRoot);
     var registryPath = Path.Combine(sitesRoot, "registry.json");
     return new SiteRegistry(registryPath);
@@ -85,7 +85,7 @@ var app = builder.Build();
 var hostOptions = app.Services.GetRequiredService<IOptions<HostOptions>>().Value;
 var siteManager = app.Services.GetRequiredService<SiteManager>();
 var sitesOptions = app.Services.GetRequiredService<IOptions<SitesOptions>>().Value;
-var sitesRootFullPath = Path.GetFullPath(sitesOptions.SitesRoot);
+var sitesRootFullPath = PathResolver.Resolve(sitesOptions.SitesRoot);
 
 // === Routes ===
 
@@ -354,6 +354,12 @@ static async Task<string> RenderSchemaFormHtml(SiteEntry site, SiteManager mgr)
 }
 
 static string EscapeJs(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
+// Relative paths from appsettings.json are anchored to the executable
+// directory (AppContext.BaseDirectory) by WebHosterMcp.Core.PathResolver.Resolve,
+// NOT to the current working directory. Absolute paths are kept verbatim.
+// This keeps site lookup stable regardless of where the OS or MCP host
+// spawns the process from (e.g. C:\Windows\System32, /, or a temp dir).
 
 static async Task<string> ReadBodyWithCapAsync(Stream body, int maxBytes)
 {

@@ -42,8 +42,10 @@ Lock-Semantik pro Feature:
 | 17 | Hosting Type: `json-schema-form` | ✅ done | MVP4 | [`17-hosting-type-schema-form.md`](./17-hosting-type-schema-form.md) |
 | 18 | HTTP Authorization (Bearer Token) | 📝 Draft | MVP5 | [`18-authorization.md`](./18-authorization.md) |
 | 19 | CI/CD Pipeline (Release Workflow) | ✅ done | – | [`19-ci-cd.md`](./19-ci-cd.md) |
+| 20 | Submission Notifications (Callback-Pfad) | 📝 Draft | – | [`20-submission-notifications.md`](./20-submission-notifications.md) |
+| 21 | Payload Validation at Deploy | ✅ done | – | [`21-payload-validation.md`](./21-payload-validation.md) |
 
-**Implementation-Stand:** Build grün (0 Fehler); **103/103 Tests grün** (Stand `d47ab5e`, Commit 2026-09-26 08:34).
+**Implementation-Stand:** Build grün (0 Fehler); **125/125 Tests grün** (Stand v0.1, Commit 2026-09-27).
 
 ---
 
